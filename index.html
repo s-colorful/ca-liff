@@ -138,7 +138,7 @@
 // =============================================================
 // 設定
 // =============================================================
-const LIFF_ID = '2011756125-bAh93kVs';   // LINEログインチャネル > LIFF で発行される ID
+const LIFF_ID = 'YOUR_LIFF_ID';   // LINEログインチャネル > LIFF で発行される ID
 const API_URL = 'https://script.google.com/macros/s/AKfycbwuH-fKM32HKDdRvK1PZDwoW413-jitvomI6Rc76W8TQwgbEpIre8ubIXc3eIRuSciA/exec';   // GAS の Web アプリ URL（外部ホスティング時に使用）
 const MOCK = window.__MOCK__ === true || /[?&]mock=1/.test(location.search) || (typeof liff === 'undefined' && !window.google);
 
@@ -224,6 +224,7 @@ function messageFor(code) {
     FULL: 'その時限は満員です。別の時限を選んでください。',
     NO_SHEET: 'その月の時間割がまだ用意されていません。教室で確認して連絡します。',
     CLOSED: 'その日は休校日のため振り替えできません。',
+    SLOT_CLOSED: 'その時限は現在開講していないため振り替えできません。',
   })[code] || `処理できませんでした（${code}）。教室までご連絡ください。`;
 }
 
@@ -595,11 +596,11 @@ function mockApi(action, p) {
 }
 function mockApiBase(action, p) {
   const M = window.__mock || (window.__mock = {
-    students: [{ id: 'S001', name: '菅原立騎', room: '穂波' }, { id: 'S002', name: '菅原柊馬', room: '穂波' }],
+    students: [{ id: 'S001', name: '山田太郎', room: 'A教室' }, { id: 'S002', name: '山田次郎', room: 'A教室' }],
     ledger: [
-      { id: 'A1', studentId: 'S002', studentName: '菅原柊馬', date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替' },
-      { id: 'A2', studentId: 'S002', studentName: '菅原柊馬', date: '2026-09-05', dateLabel: '9/5(土)', time: '10:30', status: '未振替' },
-      { id: 'A3', studentId: 'S001', studentName: '菅原立騎', date: '2026-08-22', dateLabel: '8/22(土)', time: '10:30', status: '振替済', attendStudentId: 'S001', attendStudentName: '菅原立騎', transferDate: '2026-09-06', transferDateLabel: '9/6(日)', transferTime: '9:30' },
+      { id: 'A1', studentId: 'S002', studentName: '山田次郎', date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替' },
+      { id: 'A2', studentId: 'S002', studentName: '山田次郎', date: '2026-09-05', dateLabel: '9/5(土)', time: '10:30', status: '未振替' },
+      { id: 'A3', studentId: 'S001', studentName: '山田太郎', date: '2026-08-22', dateLabel: '8/22(土)', time: '10:30', status: '振替済', attendStudentId: 'S001', attendStudentName: '山田太郎', transferDate: '2026-09-06', transferDateLabel: '9/6(日)', transferTime: '9:30' },
     ],
   });
   const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 350));
@@ -620,7 +621,7 @@ function mockApiBase(action, p) {
     }
     case 'candidates': {
       const out = []; const t = new Date(); t.setHours(0, 0, 0, 0);
-      for (let i = -14; i <= 56; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (d.getDay() !== 6) continue;
+      for (let i = -35; i <= 56; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (d.getDay() !== 6) continue;
         const iso = isoLocal(d);
         out.push({ date: iso, label: fmtJa(iso), time: '10:30', isPast: d < t, alreadyRequested: M.ledger.some(r => r.studentId === p.studentId && r.status !== '取消' && r.date === iso) }); }
       return wait(out);
@@ -662,19 +663,19 @@ function mockApiBase(action, p) {
 function mockAdmin(action, p) {
   const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 300));
   const st = [
-    { id: 'S001', name: '菅原立騎', room: '穂波', slots: [{ dow: '土', time: '10:30' }] },
-    { id: 'S002', name: '菅原柊馬', room: '穂波', slots: [{ dow: '土', time: '10:30' }] },
-    { id: 'S010', name: '千葉悠誠', room: '古川', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
+    { id: 'S001', name: '山田太郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S002', name: '山田次郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S010', name: '鈴木一郎', room: 'B教室', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
   ];
   if (action === 'home') return wait({ admin: true, name: '先生', students: st, overview: {
     openTotal: 4, summary: [
-      { studentId: 'S002', name: '菅原柊馬', count: 2, oldest: '2026-08-29', items: [] },
-      { studentId: 'S010', name: '千葉悠誠', count: 2, oldest: '2026-09-01', items: [] },
+      { studentId: 'S002', name: '山田次郎', count: 2, oldest: '2026-08-29', items: [] },
+      { studentId: 'S010', name: '鈴木一郎', count: 2, oldest: '2026-09-01', items: [] },
     ],
-    upcoming: [{ id: 'A3', date: '2026-09-12', label: '9/12(土)', time: '9:30', attendName: '菅原立騎', forName: '菅原立騎' }],
+    upcoming: [{ id: 'A3', date: '2026-09-12', label: '9/12(土)', time: '9:30', attendName: '山田太郎', forName: '山田太郎' }],
   } });
   if (action === 'previewHome') return mockApiBase('home', p);
-  if (action === 'integrity') return wait([{ id: 'A9', who: '千葉悠誠', msg: '9/1(火) 17:00 の欠席セル（2026年9月!D14）の中身が「千葉匠眞CA」でずれています' }]);
+  if (action === 'integrity') return wait([{ id: 'A9', who: '鈴木一郎', msg: '9/1(火) 17:00 の欠席セル（2026年9月!D14）の中身が「鈴木二郎CA」でずれています' }]);
   if (action === 'ledgerOf') return wait([
     { id: 'A1', studentId: p.studentId, date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替', attendStudentId: '', attendStudentName: '', transferDate: '', transferDateLabel: '', transferTime: '', notes: '' },
   ]);
