@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>欠席・振替</title>
+<script>window.__MOCK__ = false; window.__MOCK_ADMIN__ = false; /* GAS の doGet が ?mock=1 / ?admin=1 のとき true に書き換える */</script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --ink:#1e2a2f; --ink-2:#5b6b72; --line:#e3e8e6; --paper:#fff; --wash:#f3f6f5;
+    --act:#06c755; --act-ink:#04833a;
+    --open:#d9822b; --open-wash:#fbf1e6;
+    --done:#3b7ea1; --done-wash:#e9f2f7;
+    --danger:#c2402f;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--wash);color:var(--ink);font:16px/1.55 -apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit}
+  #app{max-width:520px;margin:0 auto;min-height:100dvh;background:var(--paper);display:flex;flex-direction:column}
+  header{padding:14px 18px 10px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em}
+  header .who{color:var(--ink-2);font-size:13px;margin-left:auto}
+  header .back{border:0;background:none;padding:2px 6px 2px 0;font-size:15px;color:var(--act-ink);cursor:pointer}
+  header .back:focus-visible{outline:3px solid #9fd8b5;border-radius:6px}
+  main{padding:16px 18px 96px;flex:1}
+  h2{font-size:15px;margin:22px 0 8px;color:var(--ink-2);font-weight:600}
+  h2:first-child{margin-top:0}
+  p.lead{margin:0 0 14px;color:var(--ink-2);font-size:14px}
+
+  /* 生徒切替 */
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;font-size:14px}
+  .tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* 台帳の行：左に状態の帯 */
+  .ticket{display:grid;grid-template-columns:6px 1fr auto;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--paper);margin-bottom:10px}
+  .ticket .bar{background:var(--open)}
+  .ticket.done .bar{background:var(--done)}
+  .ticket .body{padding:12px 14px}
+  .ticket .date{font-size:17px;font-weight:700;letter-spacing:.01em}
+  .ticket .sub{font-size:13px;color:var(--ink-2);margin-top:2px}
+  .ticket .sub b{color:var(--done);font-weight:600}
+  .ticket .acts{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 12px 10px 0}
+  .btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;text-align:center}
+  .btn.primary{background:var(--act);border-color:var(--act);color:#fff;font-weight:700}
+  .btn.primary:disabled{background:#b9e6cb;border-color:#b9e6cb}
+  .btn.quiet{border-color:transparent;color:var(--ink-2);font-size:13px;padding:4px 8px}
+  .btn.danger{color:var(--danger)}
+  .btn:focus-visible{outline:3px solid #9fd8b5;outline-offset:2px}
+
+  /* 次の授業 */
+  .next{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:6px;background:var(--wash)}
+  .next .first{font-size:20px;font-weight:700;letter-spacing:.01em}
+  .next .rest{margin-top:6px;color:var(--ink-2);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
+  .next .tag{display:inline-block;font-size:11px;font-weight:600;color:var(--done);border:1px solid var(--done);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+
+  .empty{border:1px dashed var(--line);border-radius:var(--r);padding:18px 14px;color:var(--ink-2);font-size:14px;text-align:center}
+
+  /* 下部固定の主ボタン */
+  .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--paper) 70%,rgba(255,255,255,0));display:flex;justify-content:center}
+  .dock .btn{max-width:520px;width:100%;padding:14px;font-size:16px}
+
+  /* 候補日リスト */
+  .row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row input[type=checkbox]{width:22px;height:22px;accent-color:var(--act);flex:none}
+  .row .d{font-size:16px;font-weight:600}
+  .row .t{color:var(--ink-2);font-size:14px;margin-left:8px}
+  .row.past .d{color:var(--ink-2);font-weight:500}
+  .row .note{margin-left:auto;font-size:12px;color:var(--open);white-space:nowrap}
+  .row.disabled{opacity:.5}
+
+  textarea,input[type=date],select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;background:var(--paper)}
+  textarea{min-height:72px;resize:vertical}
+  label.f{display:block;font-size:13px;color:var(--ink-2);margin:14px 0 6px}
+
+  /* 振替カレンダー */
+  .cal{border:1px solid var(--line);border-radius:var(--r);padding:10px 10px 6px;margin-bottom:10px;background:var(--paper)}
+  .cal .m{font-size:14px;font-weight:700;margin:0 0 6px 4px}
+  .cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal .wd{font-size:11px;color:var(--ink-2);text-align:center;padding:2px 0}
+  .cal .wd.sun{color:var(--danger)} .cal .wd.sat{color:var(--done)}
+  .cal .day{border:0;background:none;border-radius:8px;padding:0;height:38px;font-size:15px;font-weight:600}
+  .cal .day:disabled{color:#c3cbc8;font-weight:400;text-decoration:line-through;text-decoration-color:#dfe5e2}
+  .cal .day.today{box-shadow:inset 0 0 0 1.5px var(--act)}
+  .cal .day[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .cal .day.blank{visibility:hidden}
+  .legend{font-size:12px;color:var(--ink-2);margin:0 0 10px 2px}
+
+  /* 空き時限 */
+  .slots{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .slot{border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:left;background:var(--paper)}
+  .slot .tm{font-size:18px;font-weight:700}
+  .slot .st{font-size:13px;color:var(--ink-2);margin-top:2px}
+  .slot.ok .st{color:var(--act-ink)}
+  .slot.gray .st{color:var(--open)}
+  .slot.ng{opacity:.45}
+  .slot[aria-pressed="true"]{border-color:var(--act);box-shadow:inset 0 0 0 1px var(--act)}
+
+  /* 確認パネル */
+  /* 管理者 */
+  .adm{background:#eef3f7;border:1px solid #cfe0ec;border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:13px;color:#2c5670}
+  .arow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .arow:last-child{border-bottom:0}
+  .arow .n{font-weight:600}
+  .arow .c{margin-left:auto;font-size:13px;color:var(--open);white-space:nowrap}
+  .arow .go{font-size:13px;color:var(--act-ink)}
+  .search{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;margin-bottom:10px}
+  .issue{border-left:3px solid var(--open);background:var(--open-wash);padding:8px 10px;border-radius:0 8px 8px 0;margin-bottom:6px;font-size:13px}
+
+  /* 残り枠の注意 */
+  .warn{background:var(--open-wash);border:1px solid #f0d3ab;color:#8a5a12;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px}
+
+  .sheet{position:fixed;inset:0;background:rgba(30,42,47,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+  .sheet .card{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom))}
+  .sheet h3{margin:0 0 6px;font-size:17px}
+  .sheet .card p{margin:0 0 16px;color:var(--ink-2);font-size:14px}
+  .sheet .card .btn{width:100%;padding:13px;margin-top:8px;font-size:16px}
+
+  #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+  #toast.show{opacity:1}
+  .mock{background:#fff3cd;color:#6b5300;font-size:12px;text-align:center;padding:4px}
+  .loading{color:var(--ink-2);font-size:14px;padding:24px 0;text-align:center}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mockbar" class="mock" hidden>モック表示中：LINEに接続していません。データは架空です。</div>
+  <header><button class="back" id="back" hidden aria-label="前の画面に戻る">‹ 戻る</button><h1>欠席・振替</h1><span class="who" id="who"></span></header>
+  <main id="view"><div class="loading">読み込み中…</div></main>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+// =============================================================
+// 設定
+// =============================================================
+const LIFF_ID = '2011756125-bAh93kVs';   // LINEログインチャネル > LIFF で発行される ID
+const API_URL = 'https://script.google.com/macros/s/AKfycbwuH-fKM32HKDdRvK1PZDwoW413-jitvomI6Rc76W8TQwgbEpIre8ubIXc3eIRuSciA/exec';   // GAS の Web アプリ URL（外部ホスティング時に使用）
+const MOCK = window.__MOCK__ === true || /[?&]mock=1/.test(location.search) || (typeof liff === 'undefined' && !window.google);
+
+// =============================================================
+// API 層（LIFF → GAS）
+// =============================================================
+let idToken = null;
+/** 一定時間で終わらない処理をエラーにする（どこで止まったか画面に出すため） */
+function withTimeout(promise, ms, label) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms))]);
+}
+async function api(action, params = {}) {
+  if (MOCK) return mockApi(action, params);
+  const body = { action, params, idToken };
+  if (window.google && google.script && google.script.run) {
+    return new Promise((res, rej) => google.script.run
+      .withSuccessHandler(s => { const r = JSON.parse(s); r.ok ? res(r.result) : rej(new Error(r.error)); })
+      .withFailureHandler(e => rej(e)).apiEntry(JSON.stringify(body)));
+  }
+  const r = await withTimeout(fetch(API_URL, { method: 'POST', body: JSON.stringify(body) }), 30000, `サーバーの応答がありません（${action}）`); // text/plain で送り、プリフライトを避ける
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return j.result;
+}
+
+// =============================================================
+// 状態と描画
+// =============================================================
+const S = { students: [], ledger: [], nextLessons: {}, cur: null, openCount: 0, admin: null, adminStudents: [], preview: false };
+const $view = document.getElementById('view');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600); }
+function busy(msg = '処理中…') { $view.innerHTML = `<div class="loading">${esc(msg)}</div>`; }
+const $back = document.getElementById('back');
+
+// ---------- 画面遷移（アプリ内で積み上げて管理。ブラウザ履歴には頼らない） ----------
+const NAV = [];            // 今の画面より前の画面（{ name, redraw }）
+let CURRENT = null;        // 今の画面
+let restoring = false;     // 戻る操作で再描画している最中
+let ignorePop = false;     // 画面上の「戻る」に伴う popstate を無視するため
+
+/** ホーム系の画面：遷移の履歴をリセットする */
+function setRoot(name, redraw) {
+  NAV.length = 0;
+  CURRENT = { name, redraw };
+  $back.hidden = !S.preview;   // プレビュー中はホームから管理者メニューへ戻れるようにする
+}
+/** サブ画面に入る。同じ画面が履歴にあればそこまで巻き戻す */
+function enter(name, redraw) {
+  if (!restoring) {
+    const idx = NAV.findIndex(n => n.name === name);
+    if (idx >= 0) NAV.length = idx;
+    else if (CURRENT && CURRENT.name !== name) NAV.push(CURRENT);
+    try { history.pushState({ screen: name }, ''); } catch (e) {}
+  }
+  CURRENT = { name, redraw };
+  $back.hidden = false;
+}
+/** 一つ前の画面に戻る */
+function goBack() {
+  const prev = NAV.pop();
+  if (!prev) {
+    if (S.preview) return exitPreview();
+    return S.admin && !S.preview ? renderAdminHome() : renderHome();
+  }
+  restoring = true;
+  try { CURRENT = prev; prev.redraw(); } finally { restoring = false; }
+}
+$back.onclick = () => {
+  goBack();
+  // 端末の戻るボタン用に積んだ履歴も一つ戻す（その popstate は無視する）
+  ignorePop = true; setTimeout(() => { ignorePop = false; }, 600);
+  try { history.back(); } catch (e) {}
+};
+window.addEventListener('popstate', () => { if (ignorePop) { ignorePop = false; return; } goBack(); });
+
+function fail(e) { console.error(e); toast(messageFor(e.message)); }
+function messageFor(code) {
+  return ({
+    NOT_REGISTERED: 'このLINEアカウントは教室に登録されていません。教室までご連絡ください。',
+    busy: '混み合っています。少し待ってからもう一度お試しください。',
+    DUPLICATE: 'その日時は既に登録されています。',
+    FULL: 'その時限は満員です。別の時限を選んでください。',
+    NO_SHEET: 'その月の時間割がまだ用意されていません。教室で確認して連絡します。',
+    CLOSED: 'その日は休校日のため振り替えできません。',
+  })[code] || `処理できませんでした（${code}）。教室までご連絡ください。`;
+}
+
+async function reload() {
+  if (S.preview) return startPreview(S.previewStudent);
+  if (S.admin) { const id = S.cur; S.admin = (await api('home')); S.adminStudents = S.admin.students || []; return id ? renderAdminStudent(id) : renderAdminHome(); }
+  return loadHome();
+}
+
+async function loadHome() {
+  busy('読み込み中…');
+  try {
+    const h = await api('home');
+    if (h.admin) { S.admin = h; S.adminStudents = h.students || []; renderAdminHome(); return; }
+    S.students = h.students; S.ledger = h.ledger; S.nextLessons = h.nextLessons || {}; S.openCount = h.openCount || 0;
+    if (!S.cur || !S.students.some(s => s.id === S.cur)) S.cur = S.students[0]?.id || null;
+    renderHome();
+  } catch (e) {
+    $view.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div>`;
+  }
+}
+
+function renderHome() {
+  setRoot('home', renderHome);
+  const st = S.students.find(s => s.id === S.cur);
+  document.getElementById('who').textContent = st ? `${st.name}さん${S.preview ? '（プレビュー）' : ''}` : '';
+  const mine = S.ledger.filter(r => r.studentId === S.cur);
+  const open = mine.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
+  const done = mine.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
+
+  let html = '';
+  if (S.preview) html += `<div class="adm">プレビュー（閲覧のみ）：この家庭の保護者に見えている画面です。操作しても登録されません。左上の「戻る」で管理者メニューに戻ります。</div>`;
+  if (S.students.length > 1) {
+    html += `<div class="tabs" role="tablist">${S.students.map(s => `<button class="tab" role="tab" aria-selected="${s.id === S.cur}" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>`;
+  }
+  const nx = S.nextLessons[S.cur] || [];
+  const tag = l => l.kind === 'transfer' ? `<span class="tag">振替${l.forStudentId && l.forStudentId !== S.cur ? '・' + esc(S.students.find(s => s.id === l.forStudentId)?.name || '') + 'の分' : ''}</span>` : '';
+  html += `<h2>次の授業</h2>`;
+  html += nx.length
+    ? `<div class="next"><div class="first">${esc(nx[0].label)} ${esc(nx[0].time)}${tag(nx[0])}</div>${nx.length > 1 ? `<div class="rest">${nx.slice(1).map(l => `<span>${esc(l.label)} ${esc(l.time)}${tag(l)}</span>`).join('')}</div>` : ''}</div>`
+    : `<div class="empty">予定されている授業がありません</div>`;
+  html += `<h2>振替がまだの欠席${open.length ? `　${open.length}件` : ''}</h2>`;
+  html += open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちの欠席はありません</div>`;
+  if (done.length) {
+    html += `<h2>振替が決まっている欠席</h2>` + done.map(r => ticket(r)).join('');
+  }
+  html += `<div class="dock"><button class="btn primary" id="goAbs">欠席を連絡する</button></div>`;
+  $view.innerHTML = html;
+
+  $view.querySelectorAll('.tab').forEach(b => b.onclick = () => { S.cur = b.dataset.id; renderHome(); });
+  document.getElementById('goAbs').onclick = () => renderAbsence();
+  $view.querySelectorAll('[data-act]').forEach(b => b.onclick = () => onTicketAction(b.dataset.act, b.dataset.id));
+}
+
+function ticket(r) {
+  const done = r.status === '振替済';
+  const sub = done
+    ? `→ <b>${esc(r.transferDateLabel)} ${esc(r.transferTime)}</b>${r.attendStudentId && r.attendStudentId !== r.studentId ? `に ${esc(r.attendStudentName)}さんが出席` : ''}`
+    : '振替先が決まっていません';
+  const acts = done
+    ? `<button class="btn" data-act="change" data-id="${esc(r.id)}">変更</button><button class="btn quiet danger" data-act="cancelTransfer" data-id="${esc(r.id)}">振替を取消</button>`
+    : `<button class="btn primary" data-act="transfer" data-id="${esc(r.id)}">振替を入れる</button><button class="btn quiet danger" data-act="cancelAbsence" data-id="${esc(r.id)}">欠席を取消</button>`;
+  return `<div class="ticket ${done ? 'done' : ''}"><div class="bar"></div>
+    <div class="body"><div class="date">${esc(r.dateLabel)} ${esc(r.time)} 欠席</div><div class="sub">${sub}</div></div>
+    <div class="acts">${acts}</div></div>`;
+}
+
+function onTicketAction(act, id) {
+  const r = S.ledger.find(x => x.id === id);
+  if (!r) return;
+  if (act === 'transfer' || act === 'change') return renderTransfer(r);
+  if (act === 'cancelTransfer') return confirmSheet('振替を取り消しますか', `${r.transferDateLabel} ${r.transferTime} の振替を取り消し、欠席は「振替待ち」に戻ります。`, '振替を取り消す', async () => {
+    await api('cancelTransfer', { absenceId: id }); toast('振替を取り消しました'); await reload();
+  });
+  if (act === 'cancelAbsence') return confirmSheet('欠席の連絡を取り消しますか', `${r.dateLabel} ${r.time} は通常どおり出席する扱いになります。`, '欠席を取り消す', async () => {
+    await api('cancelAbsence', { absenceId: id }); toast('欠席を取り消しました'); await reload();
+  });
+}
+
+// ---------- 欠席連絡 ----------
+async function renderAbsence() {
+  enter('absence', renderAbsence);
+  busy('通常の授業日を確認しています…');
+  let cands;
+  try { cands = await api('candidates', { studentId: S.cur }); } catch (e) { fail(e); return renderHome(); }
+  const st = S.students.find(s => s.id === S.cur);
+  const byDate = {};
+  cands.forEach(c => (byDate[c.date] = byDate[c.date] || { label: c.label, isPast: c.isPast, items: [] }).items.push(c));
+  const dates = Object.keys(byDate).sort();
+
+  let html = `<h2>${esc(st.name)}さんの欠席する日</h2><p class="lead">通常の授業日から選んでください。複数選べます。</p>`;
+  html += dates.map(d => {
+    const g = byDate[d];
+    return g.items.map((c, i) => {
+      const dis = c.alreadyRequested;
+      return `<label class="row ${g.isPast ? 'past' : ''} ${dis ? 'disabled' : ''}">
+        <input type="checkbox" data-date="${esc(c.date)}" data-time="${esc(c.time)}" ${dis ? 'disabled' : ''}>
+        <span class="d">${i === 0 ? esc(g.label) : ''}</span><span class="t">${esc(c.time)}</span>
+        ${dis ? '<span class="note">連絡済み</span>' : (g.isPast ? '<span class="note" style="color:var(--ink-2)">過去</span>' : '')}
+      </label>`;
+    }).join('');
+  }).join('');
+  if (!dates.length) html += `<div class="empty">選べる授業日がありません。教室までご連絡ください。</div>`;
+  html += `<label class="f" for="notes">教室への伝言（任意）</label><textarea id="notes" placeholder="例：発熱のため。振替は来週以降で相談したいです"></textarea>`;
+  html += `<div class="dock"><button class="btn primary" id="send" disabled>欠席を連絡する</button></div>`;
+  $view.innerHTML = html;
+
+  const send = document.getElementById('send');
+  const picked = () => [...$view.querySelectorAll('input[type=checkbox]:checked')].map(c => ({ date: c.dataset.date, time: c.dataset.time }));
+  $view.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => {
+    // 同じ日の他のコマも一緒に選ぶ（2コマ契約の生徒向け）。外すときは個別
+    if (c.checked) $view.querySelectorAll(`input[data-date="${c.dataset.date}"]:not(:disabled)`).forEach(o => o.checked = true);
+    const n = picked().length; send.disabled = !n; send.textContent = n ? `${n}コマの欠席を連絡する` : '欠席を連絡する';
+  });
+  send.onclick = () => {
+    const list = picked();
+    const text = list.map(p => `${byDate[p.date].label} ${p.time}`).join('、');
+    confirmSheet('この内容で連絡します', text, '欠席を連絡する', async () => {
+      const notes = document.getElementById('notes').value.trim();
+      let ok = 0, dup = 0;
+      for (const p of list) {
+        const r = await api('absence', { studentId: S.cur, date: p.date, time: p.time, notes });
+        if (r.code === 'OK') ok++; else if (r.code === 'DUPLICATE') dup++; else throw new Error(r.code);
+      }
+      toast(dup ? `${ok}コマを連絡しました（${dup}コマは連絡済み）` : `${ok}コマの欠席を連絡しました`);
+      await reload();
+    });
+  };
+}
+
+// ---------- 振替 ----------
+async function renderTransfer(r) {
+  enter('transfer', () => renderTransfer(r));
+  busy('振替できる日を確認しています…');
+  let dates;
+  try { dates = await api('transferDates'); } catch (e) { fail(e); return renderHome(); }
+  const st = S.students.find(s => s.id === r.studentId);
+  const siblings = S.students.filter(s => s.id !== r.studentId);
+  let html = `<h2>${esc(r.dateLabel)} ${esc(r.time)} 欠席の振替先</h2>
+    <p class="lead">${r.status === '振替済' ? `現在は ${esc(r.transferDateLabel)} ${esc(r.transferTime)} です。新しい日時を選ぶと差し替わります。` : '日を選ぶと、空きのある時限が表示されます。'}</p>`;
+  if (siblings.length) {
+    html += `<label class="f" for="attend">出席する生徒</label><select id="attend">
+      <option value="${esc(r.studentId)}">${esc(st.name)}（本人）</option>${siblings.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select>`;
+  }
+  html += `<label class="f">振替する日</label><p class="legend">薄い日は休校日・定休日・受付期間外です。</p>`;
+  html += dates.dates.length ? calendarHtml(dates) : `<div class="empty">いま選べる日がありません。教室までご連絡ください。</div>`;
+  html += `<div id="slots" style="margin-top:14px"></div>`;
+  html += `<div class="dock"><button class="btn primary" id="book" disabled>この日時に振り替える</button></div>`;
+  $view.innerHTML = html;
+
+  const $slots = document.getElementById('slots'), book = document.getElementById('book');
+  let chosen = null, pickedDate = null;
+  async function loadSlots(date) {
+    chosen = null; book.disabled = true; pickedDate = date;
+    $slots.innerHTML = `<div class="loading">空きを確認しています…</div>`;
+    try {
+      const attendId = document.getElementById('attend')?.value || r.studentId;
+      const av = await api('availability', { studentId: attendId, date });
+      if (av.code !== 'OK') { $slots.innerHTML = `<div class="empty">${esc(messageFor(av.code))}</div>`; return; }
+      if (!av.slots.length) { $slots.innerHTML = `<div class="empty">この日は授業がありません</div>`; return; }
+      $slots.innerHTML = `<h2>${esc(fmtJa(date))} の時限</h2><div class="slots">${av.slots.map(s => {
+        const cls = s.alreadyThere ? 'ng' : s.freeWhite ? 'ok' : s.freeGray ? 'gray' : 'ng';
+        const txt = s.alreadyThere ? 'この時限に登録済み' : s.freeWhite ? `空き ${s.freeWhite}` : s.freeGray ? '臨時枠のみ' : '満員';
+        return `<button class="slot ${cls}" data-time="${esc(s.time)}" ${cls === 'ng' ? 'disabled' : ''} aria-pressed="false"><div class="tm">${esc(s.time)}</div><div class="st">${txt}</div></button>`;
+      }).join('')}</div>`;
+      $slots.querySelectorAll('.slot').forEach(b => b.onclick = () => {
+        $slots.querySelectorAll('.slot').forEach(o => o.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        const sl = av.slots.find(x => x.time === b.dataset.time) || {};
+        chosen = { date, time: b.dataset.time, gray: b.classList.contains('gray'), free: (sl.freeWhite || 0) + (sl.freeGray || 0) };
+        book.disabled = false;
+        // 兄弟がいて、未振替が2件以上あり、残り1枠のときは注意を出す
+        const old = $slots.querySelector('.warn'); if (old) old.remove();
+        if ((!S.admin || S.preview) && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) {
+          const w = document.createElement('div'); w.className = 'warn';
+          w.textContent = 'この時間の空きは残り1枠です。お一人分のみお取りできます。ごきょうだい2名分をご希望の場合は、別の時間をお選びいただくか教室にご相談ください。';
+          $slots.appendChild(w);
+        }
+        $slots.scrollIntoView({ block: 'nearest' });
+      });
+    } catch (err) { $slots.innerHTML = `<div class="empty">${esc(messageFor(err.message))}</div>`; }
+  }
+  $view.querySelectorAll('.cal .day:not(:disabled)').forEach(c => c.onclick = () => {
+    $view.querySelectorAll('.cal .day').forEach(o => o.setAttribute('aria-pressed', 'false'));
+    c.setAttribute('aria-pressed', 'true'); loadSlots(c.dataset.date);
+  });
+  document.getElementById('attend')?.addEventListener('change', () => { if (pickedDate) loadSlots(pickedDate); });
+
+  book.onclick = () => {
+    const attendId = document.getElementById('attend')?.value || r.studentId;
+    const who = S.students.find(s => s.id === attendId);
+    const label = fmtJa(chosen.date) + ' ' + chosen.time;
+    let extra = (chosen.gray ? '通常の枠に空きがないため臨時枠に入ります。' : '') + (attendId !== r.studentId ? `${who.name}さんが出席します。` : '');
+    if ((!S.admin || S.preview) && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) extra += '\nこの時間の空きは残り1枠です。お一人分のみのお取り置きとなります。';
+    confirmSheet('この日時に振り替えます', `${label}${extra ? '\n' + extra : ''}`, '振り替える', async () => {
+      const res = await api('transfer', { absenceId: r.id, date: chosen.date, time: chosen.time, attendStudentId: attendId });
+      if (res.code !== 'OK') throw new Error(res.ttCode || res.code);
+      toast(`${label} に振り替えました`); await reload();
+    });
+  };
+}
+
+/** 月ごとのカレンダー。allowed に含まれる日だけ押せる */
+function calendarHtml({ start, end, dates }) {
+  const allowed = new Set(dates);
+  const todayIso = isoLocal(new Date());
+  const [sy, sm] = start.split('-').map(Number), [ey, em] = end.split('-').map(Number);
+  let html = '';
+  for (let y = sy, m = sm; y < ey || (y === ey && m <= em); m === 12 ? (y++, m = 1) : m++) {
+    const first = new Date(y, m - 1, 1), last = new Date(y, m, 0);
+    let cells = '<div class="wd sun">日</div><div class="wd">月</div><div class="wd">火</div><div class="wd">水</div><div class="wd">木</div><div class="wd">金</div><div class="wd sat">土</div>';
+    for (let i = 0; i < first.getDay(); i++) cells += '<button class="day blank" disabled></button>';
+    for (let d = 1; d <= last.getDate(); d++) {
+      const iso = isoLocal(new Date(y, m - 1, d));
+      const ok = allowed.has(iso);
+      cells += `<button class="day ${iso === todayIso ? 'today' : ''}" data-date="${iso}" ${ok ? 'aria-pressed="false"' : 'disabled'}>${d}</button>`;
+    }
+    html += `<div class="cal"><div class="m">${y}年${m}月</div><div class="g">${cells}</div></div>`;
+  }
+  return html;
+}
+function isoLocal(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function fmtJa(iso) { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1, d); return `${m}/${d}(${'日月火水木金土'[dt.getDay()]})`; }
+
+// ---------- 管理者画面 ----------
+function renderAdminHome() {
+  S.cur = null;
+  setRoot('adminHome', renderAdminHome);
+  document.getElementById('who').textContent = `${S.admin.name}（管理者）`;
+  const ov = S.admin.overview;
+  let html = `<div class="adm">管理者モードです。全生徒の欠席・振替を確認し、代理で登録できます。<br>ここでの登録・変更・取消は<b>保護者にLINE通知は送られません</b>が、保護者の画面にはそのまま反映されます。</div>`;
+  html += `<h2>振替待ち　${ov.openTotal}件 / ${ov.summary.length}名</h2>`;
+  html += ov.summary.length
+    ? ov.summary.map(x => `<div class="arow"><span class="n">${esc(x.name)}</span><span class="c">${x.count}件・最古 ${esc(fmtJa(x.oldest))}</span><button class="btn" data-adm="student" data-id="${esc(x.studentId)}">開く</button></div>`).join('')
+    : `<div class="empty">振替待ちはありません</div>`;
+  if (ov.upcoming.length) {
+    html += `<h2>今後の振替出席</h2>`;
+    html += ov.upcoming.slice(0, 12).map(u => `<div class="arow"><span class="n">${esc(u.label)} ${esc(u.time)}</span><span class="go">${esc(u.attendName)}${u.attendName !== u.forName ? `（${esc(u.forName)}の分）` : ''}</span></div>`).join('');
+  }
+  html += `<h2>ツール</h2>
+    <div class="arow"><span class="n">代理で欠席を登録</span><button class="btn" data-adm="proxy">開く</button></div>
+    <div class="arow"><span class="n">保護者画面のプレビュー</span><button class="btn" data-adm="preview">開く</button></div>
+    <div class="arow"><span class="n">カレンダーと時間割の色を同期</span><button class="btn" data-adm="sync">実行</button></div>
+    <div class="arow"><span class="n">台帳と時間割の整合チェック</span><button class="btn" data-adm="integrity">実行</button></div>`;
+  $view.innerHTML = html;
+  $view.querySelectorAll('[data-adm]').forEach(b => b.onclick = () => {
+    if (b.dataset.adm === 'student') return renderAdminStudent(b.dataset.id);
+    if (b.dataset.adm === 'proxy') return renderAdminPicker();
+    if (b.dataset.adm === 'integrity') return renderIntegrity();
+    if (b.dataset.adm === 'preview') return renderAdminPicker(startPreview);
+    if (b.dataset.adm === 'sync') return doSync();
+  });
+}
+
+async function doSync() {
+  toast('同期しています…');
+  try { await api('syncCalendar'); toast('時間割の色を同期しました'); } catch (e) { fail(e); }
+}
+
+/** 保護者画面のプレビュー（閲覧のみ）。選んだ生徒の家庭として表示する */
+async function startPreview(studentId) {
+  busy('保護者画面を準備しています…');
+  try {
+    const h = await api('previewHome', { studentId });
+    S.preview = true; S.previewStudent = studentId;
+    S.students = h.students; S.ledger = h.ledger; S.nextLessons = h.nextLessons || {}; S.openCount = h.openCount || 0;
+    S.cur = S.students.some(s => s.id === studentId) ? studentId : S.students[0]?.id;
+    renderHome();
+  } catch (e) { fail(e); exitPreview(); }
+}
+function exitPreview() {
+  S.preview = false; S.cur = null;
+  renderAdminHome();
+}
+
+async function renderIntegrity() {
+  enter('integrity', renderIntegrity); busy('台帳と時間割を照合しています…');
+  try {
+    const issues = await api('integrity');
+    let html = `<h2>整合チェック</h2>`;
+    html += issues.length
+      ? `<p class="lead">${issues.length}件のずれが見つかりました。時間割かスプレッドシートを直接ご確認ください。</p>` + issues.map(i => `<div class="issue"><b>${esc(i.who)}</b>：${esc(i.msg)}</div>`).join('')
+      : `<div class="empty">ずれはありません</div>`;
+    $view.innerHTML = html;
+  } catch (e) { fail(e); renderAdminHome(); }
+}
+
+function renderAdminPicker(next) {
+  enter('picker', () => renderAdminPicker(next));
+  let html = `<h2>生徒を選ぶ</h2><input class="search" id="q" placeholder="氏名で絞り込み" autocomplete="off">
+    <div id="list"></div>`;
+  $view.innerHTML = html;
+  const draw = kw => {
+    const list = S.adminStudents.filter(s => !kw || s.name.includes(kw));
+    document.getElementById('list').innerHTML = list.length
+      ? list.map(s => `<div class="arow"><span class="n">${esc(s.name)}</span><span class="go">${esc(s.room || '')}</span><button class="btn" data-id="${esc(s.id)}">選ぶ</button></div>`).join('')
+      : `<div class="empty">該当する生徒がいません</div>`;
+    document.getElementById('list').querySelectorAll('[data-id]').forEach(b => b.onclick = () => (next || renderAdminStudent)(b.dataset.id));
+  };
+  draw('');
+  document.getElementById('q').oninput = e => draw(e.target.value.trim());
+}
+
+async function renderAdminStudent(studentId) {
+  enter('adminStudent', () => renderAdminStudent(studentId)); busy('読み込み中…');
+  const st = S.adminStudents.find(s => s.id === studentId) || { name: '' };
+  try {
+    const ledger = await api('ledgerOf', { studentId });
+    S.students = [{ id: studentId, name: st.name }];   // 子画面の共通処理が参照する
+    S.ledger = ledger; S.cur = studentId; S.openCount = ledger.filter(r => r.status === '未振替').length;
+    const open = ledger.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
+    const done = ledger.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
+    let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
+    html += `<h2>振替待ち${open.length ? `　${open.length}件` : ''}</h2>`;
+    html += open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`;
+    if (done.length) html += `<h2>振替済み</h2>` + done.slice(0, 10).map(r => ticket(r)).join('');
+    html += `<div class="dock"><button class="btn primary" id="goAbs">この生徒の欠席を登録</button></div>`;
+    $view.innerHTML = html;
+    document.getElementById('goAbs').onclick = () => renderAbsence();
+    $view.querySelectorAll('[data-act]').forEach(b => b.onclick = () => onTicketAction(b.dataset.act, b.dataset.id));
+  } catch (e) { fail(e); renderAdminHome(); }
+}
+
+// ---------- 確認パネル ----------
+function confirmSheet(title, text, okLabel, onOk) {
+  if (S.preview) { okLabel = 'プレビューのため送信できません'; onOk = null; }
+  else if (S.admin) text += '\n（保護者へのLINE通知は送られません）';
+  const el = document.createElement('div'); el.className = 'sheet';
+  el.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p style="white-space:pre-line">${esc(text)}</p>
+    <button class="btn primary" id="ok">${esc(okLabel)}</button><button class="btn" id="ng">戻る</button></div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.querySelector('#ng').onclick = close;
+  el.onclick = e => { if (e.target === el) close(); };
+  if (!onOk) el.querySelector('#ok').disabled = true;
+  el.querySelector('#ok').onclick = async () => {
+    if (!onOk) return;
+    const b = el.querySelector('#ok'); b.disabled = true; b.textContent = '送信中…';
+    try { await onOk(); close(); } catch (e) { close(); fail(e); }
+  };
+}
+
+// =============================================================
+// 起動
+// =============================================================
+(async function boot() {
+  if (MOCK) { document.getElementById('mockbar').hidden = false; return loadHome(); }
+  const stage = msg => { $view.innerHTML = `<div class="loading">${esc(msg)}</div>`; };
+  try {
+    if (typeof liff === 'undefined') throw new Error('LIFFの部品を読み込めませんでした（通信環境をご確認ください）');
+    stage('LINEと接続しています…');
+    await withTimeout(liff.init({ liffId: LIFF_ID }), 15000, 'LINEとの接続が完了しません（LIFFの初期化で停止）');
+    if (!liff.isLoggedIn()) { stage('LINEのログイン画面へ移動しています…'); liff.login(); return; }
+    stage('本人確認をしています…');
+    idToken = liff.getIDToken();
+    if (!idToken) throw new Error('IDトークンが取得できません（LIFFのScopeに openid が必要です）');
+    await loadHome();
+  } catch (e) {
+    $view.innerHTML = `<div class="empty">${esc(e.message)}<br><br><small>環境：${esc(location.host)} / LINE内:${typeof liff !== 'undefined' && liff.isInClient ? liff.isInClient() : '不明'}</small></div>`;
+  }
+})();
+
+// =============================================================
+// モック（?mock=1 またはブラウザ直開き）
+// =============================================================
+function mockApi(action, p) {
+  if (window.__MOCK_ADMIN__ === true || /[?&]admin=1/.test(location.search)) return mockAdmin(action, p);
+  return mockApiBase(action, p);
+}
+function mockApiBase(action, p) {
+  const M = window.__mock || (window.__mock = {
+    students: [{ id: 'S001', name: '菅原立騎', room: '穂波' }, { id: 'S002', name: '菅原柊馬', room: '穂波' }],
+    ledger: [
+      { id: 'A1', studentId: 'S002', studentName: '菅原柊馬', date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替' },
+      { id: 'A2', studentId: 'S002', studentName: '菅原柊馬', date: '2026-09-05', dateLabel: '9/5(土)', time: '10:30', status: '未振替' },
+      { id: 'A3', studentId: 'S001', studentName: '菅原立騎', date: '2026-08-22', dateLabel: '8/22(土)', time: '10:30', status: '振替済', attendStudentId: 'S001', attendStudentName: '菅原立騎', transferDate: '2026-09-06', transferDateLabel: '9/6(日)', transferTime: '9:30' },
+    ],
+  });
+  const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 350));
+  const norm = r => ({ ...r, attendStudentId: r.attendStudentId || '', attendStudentName: r.attendStudentName || '', transferDate: r.transferDate || '', transferDateLabel: r.transferDateLabel || '', transferTime: r.transferTime || '', notes: r.notes || '' });
+  switch (action) {
+    case 'home': {
+      const nextLessons = {};
+      M.students.forEach(st => {
+        const out = []; const t = new Date(); t.setHours(0, 0, 0, 0);
+        for (let i = 0; i <= 60 && out.length < 6; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (d.getDay() !== 6) continue;
+          const iso = isoLocal(d); if (M.ledger.some(r => r.studentId === st.id && r.status !== '取消' && r.date === iso)) continue;
+          out.push({ date: iso, label: fmtJa(iso), time: '10:30', kind: 'regular' }); }
+        M.ledger.filter(r => r.status === '振替済' && r.attendStudentId === st.id && r.transferDate >= isoLocal(t)).forEach(r => out.push({ date: r.transferDate, label: r.transferDateLabel, time: r.transferTime, kind: 'transfer', forStudentId: r.studentId }));
+        out.sort((a, b) => (a.date + a.time.padStart(5, '0')).localeCompare(b.date + b.time.padStart(5, '0')));
+        nextLessons[st.id] = out.slice(0, 3);
+      });
+      return wait({ students: M.students, ledger: M.ledger.filter(r => r.status !== '取消').map(norm), nextLessons });
+    }
+    case 'candidates': {
+      const out = []; const t = new Date(); t.setHours(0, 0, 0, 0);
+      for (let i = -14; i <= 56; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (d.getDay() !== 6) continue;
+        const iso = isoLocal(d);
+        out.push({ date: iso, label: fmtJa(iso), time: '10:30', isPast: d < t, alreadyRequested: M.ledger.some(r => r.studentId === p.studentId && r.status !== '取消' && r.date === iso) }); }
+      return wait(out);
+    }
+    case 'transferDates': {
+      const t = new Date(); t.setHours(0, 0, 0, 0);
+      const end = new Date(t.getFullYear(), t.getMonth() + 4, 0);
+      const dates = [];
+      for (let d = new Date(t); d <= end; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === 1) continue;
+        const gap = Math.round((d - t) / 86400000); if (gap === 9 || gap === 10 || (gap >= 40 && gap <= 46)) continue; /* 休校日の例 */
+        dates.push(isoLocal(d));
+      }
+      return wait({ start: isoLocal(t), end: isoLocal(end), dates });
+    }
+    case 'availability': {
+      const d = new Date(p.date + 'T00:00'); const dow = d.getDay();
+      const table = { 2: ['16:00', '17:00'], 3: ['16:30', '17:30'], 4: ['16:30', '17:30'], 5: ['17:30'], 6: ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], 0: ['9:30', '10:30', '11:30'] };
+      const slots = (table[dow] || []).map((time, i) => ({ time, label: time, freeWhite: [2, 0, 1, 3, 0, 4, 2][i] || 0, freeGray: i === 1 ? 2 : 0, alreadyThere: dow === 6 && time === '10:30' }));
+      return wait({ code: slots.length ? 'OK' : 'NO_DATE', slots });
+    }
+    case 'absence': {
+      if (M.ledger.some(r => r.studentId === p.studentId && r.date === p.date && r.time === p.time && r.status !== '取消')) return wait({ code: 'DUPLICATE' });
+      const s = M.students.find(x => x.id === p.studentId);
+      M.ledger.push({ id: 'A' + Date.now() + Math.random(), studentId: p.studentId, studentName: s.name, date: p.date, dateLabel: fmtJa(p.date), time: p.time, status: '未振替', notes: p.notes });
+      return wait({ code: 'OK', ttCode: 'OK' });
+    }
+    case 'transfer': {
+      const r = M.ledger.find(x => x.id === p.absenceId); const a = M.students.find(x => x.id === (p.attendStudentId || r.studentId));
+      Object.assign(r, { status: '振替済', attendStudentId: a.id, attendStudentName: a.name, transferDate: p.date, transferDateLabel: fmtJa(p.date), transferTime: p.time });
+      return wait({ code: 'OK', ttCode: 'OK' });
+    }
+    case 'cancelTransfer': { const r = M.ledger.find(x => x.id === p.absenceId); Object.assign(r, { status: '未振替', attendStudentId: '', transferDate: '', transferDateLabel: '', transferTime: '' }); return wait({ code: 'OK' }); }
+    case 'cancelAbsence': { const r = M.ledger.find(x => x.id === p.absenceId); r.status = '取消'; return wait({ code: 'OK' }); }
+  }
+  return wait({ code: 'unknown' });
+}
+
+function mockAdmin(action, p) {
+  const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 300));
+  const st = [
+    { id: 'S001', name: '菅原立騎', room: '穂波', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S002', name: '菅原柊馬', room: '穂波', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S010', name: '千葉悠誠', room: '古川', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
+  ];
+  if (action === 'home') return wait({ admin: true, name: '先生', students: st, overview: {
+    openTotal: 4, summary: [
+      { studentId: 'S002', name: '菅原柊馬', count: 2, oldest: '2026-08-29', items: [] },
+      { studentId: 'S010', name: '千葉悠誠', count: 2, oldest: '2026-09-01', items: [] },
+    ],
+    upcoming: [{ id: 'A3', date: '2026-09-12', label: '9/12(土)', time: '9:30', attendName: '菅原立騎', forName: '菅原立騎' }],
+  } });
+  if (action === 'previewHome') return mockApiBase('home', p);
+  if (action === 'integrity') return wait([{ id: 'A9', who: '千葉悠誠', msg: '9/1(火) 17:00 の欠席セル（2026年9月!D14）の中身が「千葉匠眞CA」でずれています' }]);
+  if (action === 'ledgerOf') return wait([
+    { id: 'A1', studentId: p.studentId, date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替', attendStudentId: '', attendStudentName: '', transferDate: '', transferDateLabel: '', transferTime: '', notes: '' },
+  ]);
+  return mockApiBase(action, p);
+}
+</script>
+</body>
+</html>
