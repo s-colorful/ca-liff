@@ -619,7 +619,7 @@ async function renderAdminStudent(studentId) {
     const open = ledger.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
     const done = ledger.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
     let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
-    const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}`).join('、') || '未登録';
+    const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}${x.from ? `（${x.from}から）` : ''}`).join('、') || '未登録';
     html += `<div class="arow"><span class="n">通常のコマ</span><span class="go">${esc(slotText)}</span>${(st.slots || []).length ? `<button class="btn" id="goMove">移動</button>` : ''}</div>`;
     html += `<h2><span>振替待ち</span>${open.length ? `<span>${open.length}件</span>` : ''}</h2>`;
     html += `<div class="list">${open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`}</div>`;
