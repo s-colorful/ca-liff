@@ -143,7 +143,7 @@
   .sheet .card .btn.primary.cancel{background:var(--cancel);border-color:var(--cancel)}
 
   #toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:20;transform:translate(-50%,8px);
-    background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;max-width:88vw;text-align:center}
+    background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;width:max-content;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;max-width:88vw;text-align:center}
   #toast.show{opacity:1;transform:translate(-50%,0)}
   .mock{background:var(--notice-tint);color:var(--notice);font-size:12px;text-align:center;padding:5px}
 
@@ -517,6 +517,7 @@ function renderAdminHome() {
   }
   html += `<h2>ツール</h2>
     <div class="arow"><span class="n">代理で欠席を登録</span><button class="btn" data-adm="proxy">開く</button></div>
+    <div class="arow"><span class="n">生徒の入会を登録</span><button class="btn" data-adm="enroll">開く</button></div>
     <div class="arow"><span class="n">保護者画面のプレビュー</span><button class="btn" data-adm="preview">開く</button></div>
     <div class="arow"><span class="n">カレンダーと時間割の色を同期</span><button class="btn" data-adm="sync">実行</button></div>
     <div class="arow"><span class="n">台帳と時間割の整合チェック</span><button class="btn" data-adm="integrity">実行</button></div>`;
@@ -526,6 +527,7 @@ function renderAdminHome() {
     if (b.dataset.adm === 'proxy') return renderAdminPicker();
     if (b.dataset.adm === 'integrity') return renderIntegrity();
     if (b.dataset.adm === 'preview') return renderAdminPicker(startPreview);
+    if (b.dataset.adm === 'enroll') return renderEnroll();
     if (b.dataset.adm === 'sync') return doSync();
   });
 }
@@ -621,6 +623,7 @@ async function renderAdminStudent(studentId) {
     let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
     const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}${x.from ? `（${x.from}から）` : ''}`).join('、') || '未登録';
     html += `<div class="arow"><span class="n">通常のコマ</span><span class="go">${esc(slotText)}</span>${(st.slots || []).length ? `<button class="btn" id="goMove">移動</button>` : ''}</div>`;
+    html += `<div class="arow"><span class="n">${st.leaving ? `${esc(st.leaving)}で退会予定` : '退会の手続き'}</span>${st.leaving ? '' : `<button class="btn" id="goLeave">開く</button>`}</div>`;
     html += `<h2><span>振替待ち</span>${open.length ? `<span>${open.length}件</span>` : ''}</h2>`;
     html += `<div class="list">${open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`}</div>`;
     if (done.length) html += `<h2><span>振替済み</span></h2><div class="list">${done.slice(0, 10).map(r => ticket(r)).join('')}</div>`;
@@ -628,6 +631,7 @@ async function renderAdminStudent(studentId) {
     $view.innerHTML = html;
     document.getElementById('goAbs').onclick = () => renderAbsence();
     const gm = document.getElementById('goMove'); if (gm) gm.onclick = () => renderMoveSlot(studentId);
+    const gl = document.getElementById('goLeave'); if (gl) gl.onclick = () => renderWithdraw(studentId);
     $view.querySelectorAll('[data-act]').forEach(b => b.onclick = () => onTicketAction(b.dataset.act, b.dataset.id));
   } catch (e) { fail(e); renderAdminHome(); }
 }
@@ -680,6 +684,114 @@ function renderMoveSlot(studentId) {
     planned = p.ok ? p : null;
     $go.disabled = !p.ok;
     $go.textContent = p.ok ? 'この内容で移動する' : '止める理由を解消してください';
+  }
+}
+
+// ---------- 入会・退会（管理者） ----------
+/** 確認結果（止める理由・注意）を描く。ok なら true を返す */
+function drawPlan($el, p, lead) {
+  let h = `<h2>確認結果</h2><p class="lead">${lead}</p>`;
+  h += p.blockers.map(b => `<div class="issue" style="background:#fbecea;color:#9b2c22"><b>止める理由</b>：${esc(b)}</div>`).join('');
+  h += p.warnings.map(w => `<div class="issue"><b>注意</b>：${esc(w)}</div>`).join('');
+  $el.innerHTML = h;
+  return p.ok;
+}
+
+async function renderEnroll() {
+  enter('enroll', renderEnroll);
+  busy('読み込み中…');
+  let opt;
+  try { opt = await api('enrollOptions'); } catch (e) { fail(e); return renderAdminHome(); }
+  const opts = (S.admin && S.admin.slotOptions) || {};
+  const today = isoLocal(new Date());
+  const sibs = S.adminStudents.filter(s => s.familyId).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  let html = `<div class="adm">新しく入会する生徒を登録します。時間割（原本）と、作成済みの月次シートの開始日以降に名前を書き込みます。</div>
+    <label class="f" for="enName">氏名</label><input class="search" id="enName" placeholder="例：新井花" autocomplete="off">
+    <label class="f" for="enDisp">時間割での表記</label><input class="search" id="enDisp" placeholder="空欄なら氏名と同じ。CA・EGなどの記号も時間割どおりに" autocomplete="off">
+    <label class="f" for="enRoom">教室</label><input class="search" id="enRoom" list="enRooms" autocomplete="off"><datalist id="enRooms">${(opt.rooms || []).map(r => `<option value="${esc(r)}">`).join('')}</datalist>
+    <label class="f">通うコマ</label><div id="enSlots"></div><button class="btn" id="enAdd" type="button">コマを追加</button>
+    <label class="f" for="enStart">開始日（最初の授業の日）</label><input type="date" id="enStart" value="${today}">
+    <label class="f" for="enFam">家庭</label><select id="enFam"><option value="">新しい家庭として登録</option>${sibs.map(s => `<option value="${esc(s.id)}">${esc(s.name)}さんと同じ家庭（きょうだい）</option>`).join('')}</select>
+    <label class="f">保護者のLINE（友だち追加済みで、まだ紐づいていないもの）</label>
+    <div id="enParents">${(opt.unlinked || []).length
+      ? opt.unlinked.map(u => `<label class="row"><input type="checkbox" value="${esc(u.uid)}"><span class="d">${esc(u.name)}</span><span class="t">ID末尾 ${esc(u.tail)}</span></label>`).join('')
+      : `<div class="empty">紐づけ待ちのLINEはありません。保護者が友だち追加したあとで、家庭マスタに家庭IDを入れてください。</div>`}</div>
+    <div id="enPlan" class="slotarea" style="min-height:0"></div>
+    <div class="dock"><button class="btn primary" id="enGo">確認する</button></div>`;
+  $view.innerHTML = html;
+  const $slots = document.getElementById('enSlots');
+  const addSlot = () => {
+    const d = Object.keys(opts)[0] || '';
+    const row = document.createElement('div'); row.className = 'pickbar';
+    row.innerHTML = `<select class="dw">${Object.keys(opts).map(x => `<option>${esc(x)}</option>`).join('')}</select><select class="tm"></select><button class="link" type="button">外す</button>`;
+    const fill = () => { row.querySelector('.tm').innerHTML = (opts[row.querySelector('.dw').value] || []).map(t => `<option>${esc(t)}</option>`).join(''); };
+    row.querySelector('.dw').onchange = () => { fill(); reset(); };
+    row.querySelector('.tm').onchange = reset;
+    row.querySelector('.link').onclick = () => { row.remove(); reset(); };
+    $slots.appendChild(row); fill(); if (d) row.querySelector('.dw').value = d; reset();
+  };
+  const params = () => ({
+    name: document.getElementById('enName').value, display: document.getElementById('enDisp').value, room: document.getElementById('enRoom').value,
+    slots: [...$slots.querySelectorAll('.pickbar')].map(r => ({ dow: r.querySelector('.dw').value, time: r.querySelector('.tm').value })),
+    start: document.getElementById('enStart').value, siblingId: document.getElementById('enFam').value,
+    parentUids: [...document.querySelectorAll('#enParents input:checked')].map(c => c.value),
+  });
+  const $plan = document.getElementById('enPlan'), $go = document.getElementById('enGo');
+  let planned = null;
+  function reset() { planned = null; $plan.innerHTML = ''; $go.textContent = '確認する'; $go.disabled = false; }
+  document.getElementById('enAdd').onclick = addSlot;
+  ['enName', 'enDisp', 'enRoom', 'enStart', 'enFam'].forEach(id => document.getElementById(id).addEventListener('input', reset));
+  document.getElementById('enParents').addEventListener('change', reset);
+  addSlot();
+  $go.onclick = async () => {
+    if (planned) {
+      const p = planned;
+      return confirmSheet('入会を登録します', `${p.name}さん（${p.display}）\n${p.slotsText}・${p.start}から\n生徒ID ${p.studentId}／家庭ID ${p.familyId}`, '登録する', async () => {
+        const r = await api('applyEnroll', params());
+        if (r.code !== 'OK') { planned = null; showPlan(r.plan); throw new Error('登録できませんでした。内容を確認してください'); }
+        toast(`${p.name}さんを登録しました`);
+        S.admin = await api('home'); S.adminStudents = S.admin.students || [];
+        renderAdminStudent(r.studentId);
+      });
+    }
+    $go.disabled = true; $plan.innerHTML = `<div class="loading">時間割を確認しています…</div>`;
+    try { showPlan(await api('planEnroll', params())); } catch (e) { $plan.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div>`; $go.disabled = false; }
+    $plan.scrollIntoView({ block: 'start' });
+  };
+  function showPlan(p) {
+    const ok = drawPlan($plan, p, `${esc(p.name || '（氏名未入力）')}さん／${esc(p.slotsText || 'コマ未選択')}${p.start ? `・${esc(p.start)}から` : ''}／生徒ID ${esc(p.studentId)}・家庭ID ${esc(p.familyId || '—')}／時間割 ${p.cellCount}か所に記入`);
+    planned = ok ? p : null; $go.disabled = !ok; $go.textContent = ok ? 'この内容で登録する' : '止める理由を解消してください';
+  }
+}
+
+function renderWithdraw(studentId) {
+  enter('withdraw', () => renderWithdraw(studentId));
+  const st = S.adminStudents.find(s => s.id === studentId) || { name: '' };
+  const today = isoLocal(new Date());
+  $view.innerHTML = `<div class="adm">${esc(st.name)}さんの退会の手続きをします。最終授業日の翌日以降の時間割と原本から名前を外し、列を詰めます。最終日を過ぎると、保護者の画面と先生の一覧から自動で外れます。</div>
+    <label class="f" for="wdLast">最終授業日（この日の授業までは出席）</label><input type="date" id="wdLast" value="${today}">
+    <div id="wdPlan" class="slotarea" style="min-height:0"></div>
+    <div class="dock"><button class="btn primary" id="wdGo">確認する</button></div>`;
+  const $plan = document.getElementById('wdPlan'), $go = document.getElementById('wdGo'), $last = document.getElementById('wdLast');
+  let planned = null;
+  $last.addEventListener('input', () => { planned = null; $plan.innerHTML = ''; $go.textContent = '確認する'; $go.disabled = false; });
+  $go.onclick = async () => {
+    if (planned) {
+      const p = planned;
+      return confirmSheet('退会の手続きをします', `${p.name}さん：${p.last}の授業まで\n時間割から ${p.cellCount}か所外します。`, '退会を確定する', async () => {
+        const r = await api('applyWithdraw', { studentId, last: $last.value });
+        if (r.code !== 'OK') { planned = null; show(r.plan); throw new Error('手続きできませんでした。内容を確認してください'); }
+        toast(`${p.name}さんの退会を登録しました`);
+        S.admin = await api('home'); S.adminStudents = S.admin.students || [];
+        renderAdminHome();
+      }, { cancel: true });
+    }
+    $go.disabled = true; $plan.innerHTML = `<div class="loading">台帳と時間割を確認しています…</div>`;
+    try { show(await api('planWithdraw', { studentId, last: $last.value })); } catch (e) { $plan.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div>`; $go.disabled = false; }
+  };
+  function show(p) {
+    const ok = drawPlan($plan, p, `${esc(p.name)}さん／${esc(p.last)}の授業まで／時間割から ${p.cellCount}か所外します`);
+    planned = ok ? p : null; $go.disabled = !ok; $go.textContent = ok ? '退会を確定する' : '止める理由を解消してください';
   }
 }
 
@@ -812,6 +924,19 @@ function mockAdmin(action, p) {
     upcoming: [{ id: 'A3', date: '2026-09-12', label: '9/12(土)', time: '9:30', attendName: '山田太郎', forName: '山田太郎' }],
   } });
   if (action === 'previewHome') return mockApiBase('home', p);
+  if (action === 'enrollOptions') return wait({ unlinked: [{ uid: 'U1', name: '新井ママ', tail: '3a9f12' }], rooms: ['A教室', 'B教室'] });
+  if (action === 'planEnroll' || action === 'applyEnroll') {
+    const clash = (p.display || p.name || '').includes('山田太郎');
+    const plan = { ok: !!p.name && !clash, blockers: [].concat(!p.name ? ['氏名を入力してください'] : [], clash ? ['時間割での表記が在籍中の「山田太郎」さんと同じです。見分けがつくように表記を変えてください'] : []),
+      warnings: (p.parentUids || []).length ? [] : ['保護者のLINEを紐づけていません。保護者が友だち追加したあと、家庭マスタで家庭IDを入れてください'],
+      studentId: 'S013', familyId: p.siblingId ? 'F001' : 'F009', name: p.name, display: p.display || p.name,
+      slotsText: (p.slots || []).map(x => `${x.dow} ${x.time}`).join('、'), start: p.start ? fmtJa(p.start) : '', cellCount: 9, sheets: ['時間割（原本）', '2026年10月'] };
+    return wait(action === 'planEnroll' ? plan : { code: plan.ok ? 'OK' : 'BLOCKED', plan, studentId: 'S001' });
+  }
+  if (action === 'planWithdraw' || action === 'applyWithdraw') {
+    const plan = { ok: true, blockers: [], warnings: ['振替されていない欠席が 1件 残ります（退会後は振替できません）'], name: '山田次郎', last: fmtJa(p.last), cellCount: 6, sheets: ['時間割（原本）', '2026年10月'] };
+    return wait(action === 'planWithdraw' ? plan : { code: 'OK', plan });
+  }
   if (action === 'planMove' || action === 'applyMove') {
     const plan = { ok: p.toDow !== '日', blockers: p.toDow === '日' ? ['10/18(日) ' + p.toTime + '：白い空き枠がありません（臨時枠のみ）'] : [], warnings: ['時間割（原本）の2週目は確認済みです（モック）'],
       from: `${p.fromDow} ${p.fromTime}`, to: `${p.toDow} ${p.toTime}`, effective: fmtJa(p.effective), cellCount: 12, sheets: ['時間割（原本）', '2026年10月', '2026年11月'], newWeeks: ['10/14(水) 16:30', '10/21(水) 16:30'] };
