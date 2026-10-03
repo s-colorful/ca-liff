@@ -12,9 +12,12 @@
 <style>
   /* ===== トークン：白と墨を基調に、操作できる場所だけ青。フォントは Zen Kaku Gothic New に統一 ===== */
   :root{
-    --bg:#ffffff; --panel:#f5f6f8; --ink:#1f2329; --sub:#6a717c; --faint:#a7adb6; --line:#e5e7eb;
-    --accent:#2457c5; --accent-ink:#ffffff; --accent-tint:#eef3fd;
-    --danger:#b42318; --cancel:#bd4f45; --cancel-line:#e9b8b2; --notice:#8a5a00; --notice-tint:#fdf6e7;
+    /* 案3「木と青緑」：白地に木の色味の面、押せる場所は青緑。フォントは Zen Kaku Gothic New に統一 */
+    --bg:#ffffff; --head:rgba(251,247,242,.94); --panel:#f4ebdf; --panel-sub:#6e6257; --panel-line:#e3d6c6; --muted:#f8f4ef;
+    --ink:#2b2622; --sub:#766a5f; --faint:#b3a89c; --line:#ece4da;
+    --accent:#1d6b67; --accent-ink:#ffffff; --accent-tint:#e6f2f1; --accent-off:#b7d1cf;
+    --open-bg:#f8e3cc; --open-fg:#8a4d10; --done-bg:#d9eeec; --done-fg:#1d6b67;
+    --danger:#b42318; --cancel:#b5524a; --cancel-line:#e8c0ba; --notice:#8a4d10; --notice-tint:#fbf0e3;
     --r:12px; --r-s:8px;
     color-scheme:light;
   }
@@ -29,7 +32,7 @@
   #app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
   /* ヘッダー */
-  header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(8px);
+  header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head);backdrop-filter:saturate(1.4) blur(8px);
     display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);min-height:52px}
   header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.02em}
   header .who{margin-left:auto;font-size:13px;color:var(--sub)}
@@ -44,12 +47,12 @@
   /* きょうだいの切り替え：下線のタブ */
   .tabs{display:flex;gap:20px;margin:-4px 0 20px;border-bottom:1px solid var(--line)}
   .tab{border:0;background:none;padding:8px 0 10px;font-size:15px;font-weight:500;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-  .tab[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
 
   /* 次の授業 */
   .next{background:var(--panel);border-radius:var(--r);padding:16px 18px}
   .next .first{font-size:26px;font-weight:700;line-height:1.3;letter-spacing:.01em}
-  .next .rest{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--sub)}
+  .next .rest{margin-top:10px;padding-top:10px;border-top:1px solid var(--panel-line);display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--panel-sub)}
   .next .tag{display:inline-block;margin-left:8px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:700;vertical-align:3px;color:var(--accent)}
   .next .rest .tag{vertical-align:1px}
 
@@ -62,13 +65,16 @@
   .ticket .sub b{color:var(--ink);font-weight:700}
   .ticket .sub .arrow{margin-right:4px;color:var(--sub)}
   .ticket .acts{flex:none}
+  .chip{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;vertical-align:1px}
+  .chip.open{background:var(--open-bg);color:var(--open-fg)}
+  .chip.done{background:var(--done-bg);color:var(--done-fg)}
   .link{border:0;background:none;padding:6px 0 0;font-size:13px;color:var(--cancel);text-decoration:underline;text-decoration-color:var(--cancel-line);text-underline-offset:3px;cursor:pointer}
   .link.danger{color:var(--danger)}
 
   /* ボタン */
   .btn{border:1px solid var(--line);background:var(--bg);border-radius:var(--r-s);padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer;line-height:1.3}
   .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-  .btn.primary:disabled{background:#c9d3e8;border-color:#c9d3e8;color:#fff}
+  .btn.primary:disabled{background:var(--accent-off);border-color:var(--accent-off);color:#fff}
   .btn.quiet{border-color:transparent;background:none;color:var(--sub);font-weight:500;padding:6px 8px}
   .btn.danger{color:var(--danger)}
   .btn:focus-visible,.tab:focus-visible,.link:focus-visible,.back:focus-visible,.day:focus-visible,.slot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -80,7 +86,7 @@
   .dock{position:fixed;left:0;right:0;bottom:0;z-index:4;display:flex;justify-content:center;
     padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 72%,rgba(255,255,255,0))}
   .dock .btn{width:100%;max-width:480px;padding:15px;font-size:16px;border-radius:var(--r);background:var(--ink);border-color:var(--ink);color:#fff}
-  .dock .btn:disabled{background:#c8ccd2;border-color:#c8ccd2}
+  .dock .btn:disabled{background:#cfc6bb;border-color:#cfc6bb}
 
   /* 欠席する日の選択 */
   .row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
@@ -104,10 +110,10 @@
   .cal .m{margin:0 0 6px;font-size:15px;font-weight:700}
   .cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
   .cal .wd{text-align:center;font-size:11px;color:var(--sub);padding:4px 0}
-  .cal .wd.sun{color:#b42318}.cal .wd.sat{color:#2457c5}
+  .cal .wd.sun{color:var(--cancel)}.cal .wd.sat{color:var(--accent)}
   .cal .day{height:42px;border:0;border-radius:var(--r-s);background:none;font-size:15px;font-weight:700;cursor:pointer}
   .cal .day:not(:disabled):hover{background:var(--panel)}
-  .cal .day:disabled{color:#c9cdd3;font-weight:400;cursor:default}
+  .cal .day:disabled{color:#cfc6bb;font-weight:400;cursor:default}
   .cal .day.today{box-shadow:inset 0 0 0 1.5px var(--faint)}
   .cal .day[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
   .cal .day.blank{visibility:hidden}
@@ -118,7 +124,7 @@
   .slot .tm{font-size:20px;font-weight:700;line-height:1.2}
   .slot .st{margin-top:4px;font-size:12px;color:var(--sub)}
   .slot.gray .st{color:var(--notice)}
-  .slot.ng{background:var(--panel);border-color:var(--panel);color:var(--faint);cursor:default}
+  .slot.ng{background:var(--muted);border-color:var(--muted);color:var(--faint);cursor:default}
   .slot.ng .st{color:var(--faint)}
   .slot[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);box-shadow:inset 0 0 0 1px var(--accent)}
 
@@ -128,7 +134,7 @@
   .warn{margin-top:12px;padding:12px 14px;border-radius:var(--r-s);background:var(--notice-tint);color:var(--notice);font-size:13px}
 
   /* 確認パネル */
-  .sheet{position:fixed;inset:0;z-index:10;background:rgba(20,24,30,.38);display:flex;align-items:flex-end;justify-content:center}
+  .sheet{position:fixed;inset:0;z-index:10;background:rgba(43,38,34,.38);display:flex;align-items:flex-end;justify-content:center}
   .sheet .card{width:100%;max-width:520px;background:var(--bg);border-radius:18px 18px 0 0;padding:24px 20px calc(16px + env(safe-area-inset-bottom,0px))}
   .sheet h3{margin:0 0 8px;font-size:18px;font-weight:700}
   .sheet .card p{margin:0 0 20px;font-size:15px;color:var(--sub)}
@@ -142,7 +148,7 @@
   .mock{background:var(--notice-tint);color:var(--notice);font-size:12px;text-align:center;padding:5px}
 
   /* 管理者 */
-  .adm{margin-bottom:20px;padding:12px 14px;border-radius:var(--r-s);background:var(--panel);font-size:13px;color:var(--sub)}
+  .adm{margin-bottom:20px;padding:12px 14px;border-radius:var(--r-s);background:var(--muted);font-size:13px;color:var(--sub)}
   .arow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
   .arow .n{font-weight:700}
   .arow .c,.arow .go{margin-left:auto;font-size:13px;color:var(--sub);white-space:nowrap;font-feature-settings:"tnum" 1}
@@ -318,7 +324,9 @@ function ticket(r) {
   const done = r.status === '振替済';
   const other = r.attendStudentId && r.attendStudentId !== r.studentId ? `（${esc(r.attendStudentName)}さんが出席）` : '';
   const title = done ? `${esc(r.dateLabel)} ${esc(r.time)} の欠席` : `${esc(r.dateLabel)} ${esc(r.time)}`;
-  const sub = done ? `<span class="arrow" aria-hidden="true">→</span><b>${esc(r.transferDateLabel)} ${esc(r.transferTime)}</b> に振替${other}` : '振替先はまだ決まっていません';
+  const sub = done
+    ? `<span class="chip done">振替済</span><span class="arrow" aria-hidden="true">→</span><b>${esc(r.transferDateLabel)} ${esc(r.transferTime)}</b> に振替${other}`
+    : `<span class="chip open">振替待ち</span>`;
   const main = done
     ? `<button class="btn" data-act="change" data-id="${esc(r.id)}">変更</button>`
     : `<button class="btn primary" data-act="transfer" data-id="${esc(r.id)}">振替を入れる</button>`;
