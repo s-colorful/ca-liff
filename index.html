@@ -538,14 +538,67 @@ async function renderAdminStudent(studentId) {
     const open = ledger.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
     const done = ledger.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
     let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
+    const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}`).join('、') || '未登録';
+    html += `<div class="arow"><span class="n">通常のコマ</span><span class="go">${esc(slotText)}</span>${(st.slots || []).length ? `<button class="btn" id="goMove">移動</button>` : ''}</div>`;
     html += `<h2>振替待ち${open.length ? `　${open.length}件` : ''}</h2>`;
     html += open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`;
     if (done.length) html += `<h2>振替済み</h2>` + done.slice(0, 10).map(r => ticket(r)).join('');
     html += `<div class="dock"><button class="btn primary" id="goAbs">この生徒の欠席を登録</button></div>`;
     $view.innerHTML = html;
     document.getElementById('goAbs').onclick = () => renderAbsence();
+    const gm = document.getElementById('goMove'); if (gm) gm.onclick = () => renderMoveSlot(studentId);
     $view.querySelectorAll('[data-act]').forEach(b => b.onclick = () => onTicketAction(b.dataset.act, b.dataset.id));
   } catch (e) { fail(e); renderAdminHome(); }
+}
+
+// ---------- 通常のコマを移動（管理者） ----------
+function renderMoveSlot(studentId) {
+  enter('move', () => renderMoveSlot(studentId));
+  const st = S.adminStudents.find(s => s.id === studentId) || { name: '', slots: [] };
+  const opts = (S.admin && S.admin.slotOptions) || {};
+  const today = isoLocal(new Date());
+  let html = `<div class="adm">${esc(st.name)}さんの通常のコマを移動します。先に「確認」で書き換わる箇所と問題点を確かめ、問題がなければ実行できます。</div>`;
+  html += `<label class="f" for="mvFrom">移動するコマ</label><select id="mvFrom">${(st.slots || []).map(x => `<option value="${esc(x.dow)}|${esc(x.time)}">${esc(x.dow)} ${esc(x.time)}</option>`).join('')}</select>`;
+  html += `<label class="f" for="mvDow">移動先の曜日</label><select id="mvDow">${Object.keys(opts).map(d => `<option>${esc(d)}</option>`).join('')}</select>`;
+  html += `<label class="f" for="mvTime">移動先の時刻</label><select id="mvTime"></select>`;
+  html += `<label class="f" for="mvEff">変更日（この日以降の授業から移動）</label><input type="date" id="mvEff" min="${today}" value="${today}">`;
+  html += `<div id="mvPlan" style="margin-top:16px"></div>`;
+  html += `<div class="dock"><button class="btn primary" id="mvGo">確認する</button></div>`;
+  $view.innerHTML = html;
+
+  const $dow = document.getElementById('mvDow'), $time = document.getElementById('mvTime'), $plan = document.getElementById('mvPlan'), $go = document.getElementById('mvGo');
+  const fillTimes = () => { $time.innerHTML = (opts[$dow.value] || []).map(t => `<option>${esc(t)}</option>`).join(''); };
+  fillTimes();
+  let planned = null;
+  const params = () => { const [fromDow, fromTime] = document.getElementById('mvFrom').value.split('|'); return { studentId, fromDow, fromTime, toDow: $dow.value, toTime: $time.value, effective: document.getElementById('mvEff').value }; };
+  const reset = () => { planned = null; $plan.innerHTML = ''; $go.textContent = '確認する'; $go.disabled = false; };
+  ['mvFrom', 'mvDow', 'mvTime', 'mvEff'].forEach(id => document.getElementById(id).addEventListener('change', () => { if (id === 'mvDow') fillTimes(); reset(); }));
+
+  $go.onclick = async () => {
+    if (planned) {
+      const p = planned;
+      return confirmSheet('通常のコマを移動します', `${st.name}さん：${p.from} → ${p.to}\n${p.effective}以降の時間割 ${p.cellCount}か所と通常枠を書き換えます。`, '移動する', async () => {
+        const r = await api('applyMove', params());
+        if (r.code !== 'OK') { planned = null; showPlan(r.plan); throw new Error('移動できませんでした。内容を確認してください'); }
+        toast('通常のコマを移動しました');
+        S.admin = await api('home'); S.adminStudents = S.admin.students || [];
+        goBack();
+      });
+    }
+    $go.disabled = true; $plan.innerHTML = `<div class="loading">時間割を確認しています…</div>`;
+    try { showPlan(await api('planMove', params())); } catch (e) { $plan.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div>`; $go.disabled = false; }
+  };
+
+  function showPlan(p) {
+    let h = `<h2>確認結果</h2><p class="lead">${esc(p.from)} → ${esc(p.to)}（${esc(p.effective)}から）／時間割 ${p.cellCount}か所${p.sheets.length ? `（${esc(p.sheets.join('、'))}）` : ''}</p>`;
+    h += p.blockers.map(b => `<div class="issue" style="border-left-color:var(--danger);background:#fbeceb"><b>止める理由</b>：${esc(b)}</div>`).join('');
+    h += p.warnings.map(w => `<div class="issue"><b>注意</b>：${esc(w)}</div>`).join('');
+    if (p.ok && p.newWeeks.length) h += `<p class="lead" style="margin-top:10px">移動先に書き込む授業：${esc(p.newWeeks.join('、'))}</p>`;
+    $plan.innerHTML = h;
+    planned = p.ok ? p : null;
+    $go.disabled = !p.ok;
+    $go.textContent = p.ok ? 'この内容で移動する' : '止める理由を解消してください';
+  }
 }
 
 // ---------- 確認パネル ----------
@@ -667,7 +720,7 @@ function mockAdmin(action, p) {
     { id: 'S002', name: '山田次郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
     { id: 'S010', name: '鈴木一郎', room: 'B教室', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
   ];
-  if (action === 'home') return wait({ admin: true, name: '先生', students: st, overview: {
+  if (action === 'home') return wait({ admin: true, name: '先生', students: st, slotOptions: { '火': ['16:00', '17:00'], '水': ['16:30', '17:30'], '木': ['16:30', '17:30'], '金': ['17:30'], '土': ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], '日': ['9:30', '10:30', '11:30'] }, overview: {
     openTotal: 4, summary: [
       { studentId: 'S002', name: '山田次郎', count: 2, oldest: '2026-08-29', items: [] },
       { studentId: 'S010', name: '鈴木一郎', count: 2, oldest: '2026-09-01', items: [] },
@@ -675,6 +728,11 @@ function mockAdmin(action, p) {
     upcoming: [{ id: 'A3', date: '2026-09-12', label: '9/12(土)', time: '9:30', attendName: '山田太郎', forName: '山田太郎' }],
   } });
   if (action === 'previewHome') return mockApiBase('home', p);
+  if (action === 'planMove' || action === 'applyMove') {
+    const plan = { ok: p.toDow !== '日', blockers: p.toDow === '日' ? ['10/18(日) ' + p.toTime + '：白い空き枠がありません（臨時枠のみ）'] : [], warnings: ['時間割（原本）の2週目は確認済みです（モック）'],
+      from: `${p.fromDow} ${p.fromTime}`, to: `${p.toDow} ${p.toTime}`, effective: fmtJa(p.effective), cellCount: 12, sheets: ['時間割（原本）', '2026年10月', '2026年11月'], newWeeks: ['10/14(水) 16:30', '10/21(水) 16:30'] };
+    return wait(action === 'planMove' ? plan : { code: plan.ok ? 'OK' : 'BLOCKED', plan });
+  }
   if (action === 'integrity') return wait([{ id: 'A9', who: '鈴木一郎', msg: '9/1(火) 17:00 の欠席セル（2026年9月!D14）の中身が「鈴木二郎CA」でずれています' }]);
   if (action === 'ledgerOf') return wait([
     { id: 'A1', studentId: p.studentId, date: '2026-08-29', dateLabel: '8/29(土)', time: '10:30', status: '未振替', attendStudentId: '', attendStudentName: '', transferDate: '', transferDateLabel: '', transferTime: '', notes: '' },
