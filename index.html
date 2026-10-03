@@ -6,124 +6,159 @@
 <title>欠席・振替</title>
 <script>window.__MOCK__ = false; window.__MOCK_ADMIN__ = false; /* GAS の doGet が ?mock=1 / ?admin=1 のとき true に書き換える */</script>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light">
 <style>
+  /* ===== トークン：白と墨を基調に、操作できる場所だけ青。フォントは Zen Kaku Gothic New に統一 ===== */
   :root{
-    --ink:#1e2a2f; --ink-2:#5b6b72; --line:#e3e8e6; --paper:#fff; --wash:#f3f6f5;
-    --act:#06c755; --act-ink:#04833a;
-    --open:#d9822b; --open-wash:#fbf1e6;
-    --done:#3b7ea1; --done-wash:#e9f2f7;
-    --danger:#c2402f;
-    --r:10px;
+    --bg:#ffffff; --panel:#f5f6f8; --ink:#1f2329; --sub:#6a717c; --faint:#a7adb6; --line:#e5e7eb;
+    --accent:#2457c5; --accent-ink:#ffffff; --accent-tint:#eef3fd;
+    --danger:#b42318; --cancel:#bd4f45; --cancel-line:#e9b8b2; --notice:#8a5a00; --notice-tint:#fdf6e7;
+    --r:12px; --r-s:8px;
+    color-scheme:light;
   }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--wash);color:var(--ink);font:16px/1.55 -apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
-  button{font:inherit;color:inherit}
-  #app{max-width:520px;margin:0 auto;min-height:100dvh;background:var(--paper);display:flex;flex-direction:column}
-  header{padding:14px 18px 10px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em}
-  header .who{color:var(--ink-2);font-size:13px;margin-left:auto}
-  header .back{border:0;background:none;padding:2px 6px 2px 0;font-size:15px;color:var(--act-ink);cursor:pointer}
-  header .back:focus-visible{outline:3px solid #9fd8b5;border-radius:6px}
-  main{padding:16px 18px 96px;flex:1}
-  h2{font-size:15px;margin:22px 0 8px;color:var(--ink-2);font-weight:600}
-  h2:first-child{margin-top:0}
-  p.lead{margin:0 0 14px;color:var(--ink-2);font-size:14px}
+  :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-padding-top:env(safe-area-inset-top,0px)}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:400 15px/1.6 "Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+    font-feature-settings:"palt" 1;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .num,.ticket .date,.next .first,.cal .day,.slot .tm,.row .d,.row .t{font-feature-settings:"tnum" 1}
+  #app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
-  /* 生徒切替 */
-  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-  .tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;font-size:14px}
-  .tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* ヘッダー */
+  header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(8px);
+    display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);min-height:52px}
+  header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.02em}
+  header .who{margin-left:auto;font-size:13px;color:var(--sub)}
+  header .back{border:0;background:none;padding:6px 8px 6px 0;margin-left:-2px;font-size:15px;font-weight:500;color:var(--accent);cursor:pointer}
+  header .back[hidden]+h1{margin-left:0}
+  main{padding:20px 20px 112px;flex:1}
 
-  /* 台帳の行：左に状態の帯 */
-  .ticket{display:grid;grid-template-columns:6px 1fr auto;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--paper);margin-bottom:10px}
-  .ticket .bar{background:var(--open)}
-  .ticket.done .bar{background:var(--done)}
-  .ticket .body{padding:12px 14px}
-  .ticket .date{font-size:17px;font-weight:700;letter-spacing:.01em}
-  .ticket .sub{font-size:13px;color:var(--ink-2);margin-top:2px}
-  .ticket .sub b{color:var(--done);font-weight:600}
-  .ticket .acts{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 12px 10px 0}
-  .btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;text-align:center}
-  .btn.primary{background:var(--act);border-color:var(--act);color:#fff;font-weight:700}
-  .btn.primary:disabled{background:#b9e6cb;border-color:#b9e6cb}
-  .btn.quiet{border-color:transparent;color:var(--ink-2);font-size:13px;padding:4px 8px}
-  .btn.danger{color:var(--danger)}
-  .btn:focus-visible{outline:3px solid #9fd8b5;outline-offset:2px}
+  h2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:32px 0 10px;font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.04em}
+  h2:first-child{margin-top:4px}
+  p.lead{margin:0 0 16px;color:var(--sub);font-size:14px}
+
+  /* きょうだいの切り替え：下線のタブ */
+  .tabs{display:flex;gap:20px;margin:-4px 0 20px;border-bottom:1px solid var(--line)}
+  .tab{border:0;background:none;padding:8px 0 10px;font-size:15px;font-weight:500;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
 
   /* 次の授業 */
-  .next{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:6px;background:var(--wash)}
-  .next .first{font-size:20px;font-weight:700;letter-spacing:.01em}
-  .next .rest{margin-top:6px;color:var(--ink-2);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
-  .next .tag{display:inline-block;font-size:11px;font-weight:600;color:var(--done);border:1px solid var(--done);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+  .next{background:var(--panel);border-radius:var(--r);padding:16px 18px}
+  .next .first{font-size:26px;font-weight:700;line-height:1.3;letter-spacing:.01em}
+  .next .rest{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--sub)}
+  .next .tag{display:inline-block;margin-left:8px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:700;vertical-align:3px;color:var(--accent)}
+  .next .rest .tag{vertical-align:1px}
 
-  .empty{border:1px dashed var(--line);border-radius:var(--r);padding:18px 14px;color:var(--ink-2);font-size:14px;text-align:center}
+  /* 欠席の行（カードではなく区切り線の一覧） */
+  .list{border-top:1px solid var(--line)}
+  .ticket{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .ticket .body{flex:1;min-width:0}
+  .ticket .date{font-size:17px;font-weight:700;line-height:1.35}
+  .ticket .sub{font-size:13px;color:var(--sub);margin-top:2px}
+  .ticket .sub b{color:var(--ink);font-weight:700}
+  .ticket .sub .arrow{margin-right:4px;color:var(--sub)}
+  .ticket .acts{flex:none}
+  .link{border:0;background:none;padding:6px 0 0;font-size:13px;color:var(--cancel);text-decoration:underline;text-decoration-color:var(--cancel-line);text-underline-offset:3px;cursor:pointer}
+  .link.danger{color:var(--danger)}
 
-  /* 下部固定の主ボタン */
-  .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--paper) 70%,rgba(255,255,255,0));display:flex;justify-content:center}
-  .dock .btn{max-width:520px;width:100%;padding:14px;font-size:16px}
+  /* ボタン */
+  .btn{border:1px solid var(--line);background:var(--bg);border-radius:var(--r-s);padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer;line-height:1.3}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:disabled{background:#c9d3e8;border-color:#c9d3e8;color:#fff}
+  .btn.quiet{border-color:transparent;background:none;color:var(--sub);font-weight:500;padding:6px 8px}
+  .btn.danger{color:var(--danger)}
+  .btn:focus-visible,.tab:focus-visible,.link:focus-visible,.back:focus-visible,.day:focus-visible,.slot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-  /* 候補日リスト */
-  .row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
-  .row:last-child{border-bottom:0}
-  .row input[type=checkbox]{width:22px;height:22px;accent-color:var(--act);flex:none}
-  .row .d{font-size:16px;font-weight:600}
-  .row .t{color:var(--ink-2);font-size:14px;margin-left:8px}
-  .row.past .d{color:var(--ink-2);font-weight:500}
-  .row .note{margin-left:auto;font-size:12px;color:var(--open);white-space:nowrap}
-  .row.disabled{opacity:.5}
+  .empty{padding:20px 0;color:var(--sub);font-size:14px;border-bottom:1px solid var(--line)}
+  .loading{padding:40px 0;text-align:center;color:var(--sub);font-size:14px}
 
-  textarea,input[type=date],select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;background:var(--paper)}
-  textarea{min-height:72px;resize:vertical}
-  label.f{display:block;font-size:13px;color:var(--ink-2);margin:14px 0 6px}
+  /* 画面下の主ボタン */
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:4;display:flex;justify-content:center;
+    padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 72%,rgba(255,255,255,0))}
+  .dock .btn{width:100%;max-width:480px;padding:15px;font-size:16px;border-radius:var(--r);background:var(--ink);border-color:var(--ink);color:#fff}
+  .dock .btn:disabled{background:#c8ccd2;border-color:#c8ccd2}
 
-  /* 振替カレンダー */
-  .cal{border:1px solid var(--line);border-radius:var(--r);padding:10px 10px 6px;margin-bottom:10px;background:var(--paper)}
-  .cal .m{font-size:14px;font-weight:700;margin:0 0 6px 4px}
-  .cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-  .cal .wd{font-size:11px;color:var(--ink-2);text-align:center;padding:2px 0}
-  .cal .wd.sun{color:var(--danger)} .cal .wd.sat{color:var(--done)}
-  .cal .day{border:0;background:none;border-radius:8px;padding:0;height:38px;font-size:15px;font-weight:600}
-  .cal .day:disabled{color:#c3cbc8;font-weight:400;text-decoration:line-through;text-decoration-color:#dfe5e2}
-  .cal .day.today{box-shadow:inset 0 0 0 1.5px var(--act)}
-  .cal .day[aria-pressed="true"]{background:var(--ink);color:#fff}
+  /* 欠席する日の選択 */
+  .row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .row input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin:0;border:1.5px solid var(--faint);border-radius:6px;display:grid;place-items:center;background:var(--bg)}
+  .row input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+  .row input[type=checkbox]:checked::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+  .row .d{font-size:16px;font-weight:700;min-width:6.2em}
+  .row .t{font-size:15px;color:var(--sub)}
+  .row.past .d{color:var(--sub);font-weight:500}
+  .row .note{margin-left:auto;font-size:12px;color:var(--sub)}
+  .row.disabled{opacity:.45;cursor:default}
+
+  label.f{display:block;margin:24px 0 8px;font-size:13px;font-weight:700;color:var(--sub)}
+  textarea,input[type=date],select,.search{width:100%;border:1px solid var(--line);border-radius:var(--r-s);padding:11px 12px;background:var(--bg);font-size:15px}
+  textarea{min-height:84px;resize:vertical}
+  textarea:focus,select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+
+  /* カレンダー */
+  .legend{margin:-2px 0 12px;font-size:12px;color:var(--sub)}
+  .cal{margin-bottom:20px}
+  .cal .m{margin:0 0 6px;font-size:15px;font-weight:700}
+  .cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal .wd{text-align:center;font-size:11px;color:var(--sub);padding:4px 0}
+  .cal .wd.sun{color:#b42318}.cal .wd.sat{color:#2457c5}
+  .cal .day{height:42px;border:0;border-radius:var(--r-s);background:none;font-size:15px;font-weight:700;cursor:pointer}
+  .cal .day:not(:disabled):hover{background:var(--panel)}
+  .cal .day:disabled{color:#c9cdd3;font-weight:400;cursor:default}
+  .cal .day.today{box-shadow:inset 0 0 0 1.5px var(--faint)}
+  .cal .day[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
   .cal .day.blank{visibility:hidden}
-  .legend{font-size:12px;color:var(--ink-2);margin:0 0 10px 2px}
 
-  /* 空き時限 */
+  /* 時限の選択 */
   .slots{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .slot{border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:left;background:var(--paper)}
-  .slot .tm{font-size:18px;font-weight:700}
-  .slot .st{font-size:13px;color:var(--ink-2);margin-top:2px}
-  .slot.ok .st{color:var(--act-ink)}
-  .slot.gray .st{color:var(--open)}
-  .slot.ng{opacity:.45}
-  .slot[aria-pressed="true"]{border-color:var(--act);box-shadow:inset 0 0 0 1px var(--act)}
+  .slot{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--bg);text-align:left;cursor:pointer}
+  .slot .tm{font-size:20px;font-weight:700;line-height:1.2}
+  .slot .st{margin-top:4px;font-size:12px;color:var(--sub)}
+  .slot.gray .st{color:var(--notice)}
+  .slot.ng{background:var(--panel);border-color:var(--panel);color:var(--faint);cursor:default}
+  .slot.ng .st{color:var(--faint)}
+  .slot[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);box-shadow:inset 0 0 0 1px var(--accent)}
+
+  /* 日付を選んだとき、時限の一覧を画面の上まで送れるよう余白を確保 */
+  .slotarea{margin-top:8px;min-height:calc(100dvh - 180px);scroll-margin-top:68px}
+  .slotarea:empty{min-height:0}
+  .warn{margin-top:12px;padding:12px 14px;border-radius:var(--r-s);background:var(--notice-tint);color:var(--notice);font-size:13px}
 
   /* 確認パネル */
+  .sheet{position:fixed;inset:0;z-index:10;background:rgba(20,24,30,.38);display:flex;align-items:flex-end;justify-content:center}
+  .sheet .card{width:100%;max-width:520px;background:var(--bg);border-radius:18px 18px 0 0;padding:24px 20px calc(16px + env(safe-area-inset-bottom,0px))}
+  .sheet h3{margin:0 0 8px;font-size:18px;font-weight:700}
+  .sheet .card p{margin:0 0 20px;font-size:15px;color:var(--sub)}
+  .sheet .card .btn{width:100%;padding:14px;margin-top:8px;font-size:16px;border-radius:var(--r)}
+  .sheet .card .btn:not(.primary){border-color:transparent;color:var(--sub)}
+  .sheet .card .btn.primary.cancel{background:var(--cancel);border-color:var(--cancel)}
+
+  #toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:20;transform:translate(-50%,8px);
+    background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;max-width:88vw;text-align:center}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .mock{background:var(--notice-tint);color:var(--notice);font-size:12px;text-align:center;padding:5px}
+
   /* 管理者 */
-  .adm{background:#eef3f7;border:1px solid #cfe0ec;border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:13px;color:#2c5670}
-  .arow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
-  .arow:last-child{border-bottom:0}
-  .arow .n{font-weight:600}
-  .arow .c{margin-left:auto;font-size:13px;color:var(--open);white-space:nowrap}
-  .arow .go{font-size:13px;color:var(--act-ink)}
-  .search{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;margin-bottom:10px}
-  .issue{border-left:3px solid var(--open);background:var(--open-wash);padding:8px 10px;border-radius:0 8px 8px 0;margin-bottom:6px;font-size:13px}
+  .adm{margin-bottom:20px;padding:12px 14px;border-radius:var(--r-s);background:var(--panel);font-size:13px;color:var(--sub)}
+  .arow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .arow .n{font-weight:700}
+  .arow .c,.arow .go{margin-left:auto;font-size:13px;color:var(--sub);white-space:nowrap;font-feature-settings:"tnum" 1}
+  .arow .btn{padding:7px 12px;font-size:13px}
+  .arow .n + .btn{margin-left:auto}
+  .arow .tm{flex:none;width:7.5em;font-weight:700;font-feature-settings:"tnum" 1}
+  .arow .tm + .n + .btn{margin-left:auto}
+  .pickbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .pickbar select{width:auto;min-width:8em;font-weight:700}
+  .room{font-size:13px;color:var(--sub)}
+  .tgroup{margin:20px 0 0;padding-bottom:6px;font-size:13px;font-weight:700;color:var(--ink);border-bottom:1px solid var(--ink);font-feature-settings:"tnum" 1}
+  .search{margin-bottom:6px}
+  .issue{margin-bottom:8px;padding:10px 12px;border-radius:var(--r-s);background:var(--notice-tint);color:var(--notice);font-size:13px}
+  .issue b{font-weight:700}
 
-  /* 残り枠の注意 */
-  .warn{background:var(--open-wash);border:1px solid #f0d3ab;color:#8a5a12;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px}
-
-  .sheet{position:fixed;inset:0;background:rgba(30,42,47,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10}
-  .sheet .card{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom))}
-  .sheet h3{margin:0 0 6px;font-size:17px}
-  .sheet .card p{margin:0 0 16px;color:var(--ink-2);font-size:14px}
-  .sheet .card .btn{width:100%;padding:13px;margin-top:8px;font-size:16px}
-
-  #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
-  #toast.show{opacity:1}
-  .mock{background:#fff3cd;color:#6b5300;font-size:12px;text-align:center;padding:4px}
-  .loading{color:var(--ink-2);font-size:14px;padding:24px 0;text-align:center}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -266,10 +301,10 @@ function renderHome() {
   html += nx.length
     ? `<div class="next"><div class="first">${esc(nx[0].label)} ${esc(nx[0].time)}${tag(nx[0])}</div>${nx.length > 1 ? `<div class="rest">${nx.slice(1).map(l => `<span>${esc(l.label)} ${esc(l.time)}${tag(l)}</span>`).join('')}</div>` : ''}</div>`
     : `<div class="empty">予定されている授業がありません</div>`;
-  html += `<h2>振替がまだの欠席${open.length ? `　${open.length}件` : ''}</h2>`;
-  html += open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちの欠席はありません</div>`;
+  html += `<h2><span>振替がまだの欠席</span>${open.length ? `<span>${open.length}件</span>` : ''}</h2>`;
+  html += open.length ? `<div class="list">${open.map(r => ticket(r)).join('')}</div>` : `<div class="list"><div class="empty">振替待ちの欠席はありません</div></div>`;
   if (done.length) {
-    html += `<h2>振替が決まっている欠席</h2>` + done.map(r => ticket(r)).join('');
+    html += `<h2><span>振替が決まっている欠席</span><span>${done.length}件</span></h2><div class="list">${done.map(r => ticket(r)).join('')}</div>`;
   }
   html += `<div class="dock"><button class="btn primary" id="goAbs">欠席を連絡する</button></div>`;
   $view.innerHTML = html;
@@ -281,15 +316,16 @@ function renderHome() {
 
 function ticket(r) {
   const done = r.status === '振替済';
-  const sub = done
-    ? `→ <b>${esc(r.transferDateLabel)} ${esc(r.transferTime)}</b>${r.attendStudentId && r.attendStudentId !== r.studentId ? `に ${esc(r.attendStudentName)}さんが出席` : ''}`
-    : '振替先が決まっていません';
-  const acts = done
-    ? `<button class="btn" data-act="change" data-id="${esc(r.id)}">変更</button><button class="btn quiet danger" data-act="cancelTransfer" data-id="${esc(r.id)}">振替を取消</button>`
-    : `<button class="btn primary" data-act="transfer" data-id="${esc(r.id)}">振替を入れる</button><button class="btn quiet danger" data-act="cancelAbsence" data-id="${esc(r.id)}">欠席を取消</button>`;
-  return `<div class="ticket ${done ? 'done' : ''}"><div class="bar"></div>
-    <div class="body"><div class="date">${esc(r.dateLabel)} ${esc(r.time)} 欠席</div><div class="sub">${sub}</div></div>
-    <div class="acts">${acts}</div></div>`;
+  const other = r.attendStudentId && r.attendStudentId !== r.studentId ? `（${esc(r.attendStudentName)}さんが出席）` : '';
+  const title = done ? `${esc(r.dateLabel)} ${esc(r.time)} の欠席` : `${esc(r.dateLabel)} ${esc(r.time)}`;
+  const sub = done ? `<span class="arrow" aria-hidden="true">→</span><b>${esc(r.transferDateLabel)} ${esc(r.transferTime)}</b> に振替${other}` : '振替先はまだ決まっていません';
+  const main = done
+    ? `<button class="btn" data-act="change" data-id="${esc(r.id)}">変更</button>`
+    : `<button class="btn primary" data-act="transfer" data-id="${esc(r.id)}">振替を入れる</button>`;
+  const second = done
+    ? `<button class="link" data-act="cancelTransfer" data-id="${esc(r.id)}">振替を取り消す</button>`
+    : `<button class="link" data-act="cancelAbsence" data-id="${esc(r.id)}">欠席を取り消す</button>`;
+  return `<div class="ticket ${done ? 'done' : ''}"><div class="body"><div class="date">${title}</div><div class="sub">${sub}</div>${second}</div><div class="acts">${main}</div></div>`;
 }
 
 function onTicketAction(act, id) {
@@ -298,10 +334,10 @@ function onTicketAction(act, id) {
   if (act === 'transfer' || act === 'change') return renderTransfer(r);
   if (act === 'cancelTransfer') return confirmSheet('振替を取り消しますか', `${r.transferDateLabel} ${r.transferTime} の振替を取り消し、欠席は「振替待ち」に戻ります。`, '振替を取り消す', async () => {
     await api('cancelTransfer', { absenceId: id }); toast('振替を取り消しました'); await reload();
-  });
+  }, { cancel: true });
   if (act === 'cancelAbsence') return confirmSheet('欠席の連絡を取り消しますか', `${r.dateLabel} ${r.time} は通常どおり出席する扱いになります。`, '欠席を取り消す', async () => {
     await api('cancelAbsence', { absenceId: id }); toast('欠席を取り消しました'); await reload();
-  });
+  }, { cancel: true });
 }
 
 // ---------- 欠席連絡 ----------
@@ -371,15 +407,21 @@ async function renderTransfer(r) {
   }
   html += `<label class="f">振替する日</label><p class="legend">薄い日は休校日・定休日・受付期間外です。</p>`;
   html += dates.dates.length ? calendarHtml(dates) : `<div class="empty">いま選べる日がありません。教室までご連絡ください。</div>`;
-  html += `<div id="slots" style="margin-top:14px"></div>`;
+  html += `<div id="slots" class="slotarea"></div>`;
   html += `<div class="dock"><button class="btn primary" id="book" disabled>この日時に振り替える</button></div>`;
   $view.innerHTML = html;
 
   const $slots = document.getElementById('slots'), book = document.getElementById('book');
   let chosen = null, pickedDate = null;
+  /** 日付を選んだら、時間の選択肢まで自動で画面を送る */
+  function scrollToSlots() {
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $slots.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
   async function loadSlots(date) {
     chosen = null; book.disabled = true; pickedDate = date;
     $slots.innerHTML = `<div class="loading">空きを確認しています…</div>`;
+    scrollToSlots();
     try {
       const attendId = document.getElementById('attend')?.value || r.studentId;
       const av = await api('availability', { studentId: attendId, date });
@@ -390,6 +432,7 @@ async function renderTransfer(r) {
         const txt = s.alreadyThere ? 'この時限に登録済み' : s.freeWhite ? `空き ${s.freeWhite}` : s.freeGray ? '臨時枠のみ' : '満員';
         return `<button class="slot ${cls}" data-time="${esc(s.time)}" ${cls === 'ng' ? 'disabled' : ''} aria-pressed="false"><div class="tm">${esc(s.time)}</div><div class="st">${txt}</div></button>`;
       }).join('')}</div>`;
+      scrollToSlots();
       $slots.querySelectorAll('.slot').forEach(b => b.onclick = () => {
         $slots.querySelectorAll('.slot').forEach(o => o.setAttribute('aria-pressed', 'false'));
         b.setAttribute('aria-pressed', 'true');
@@ -456,7 +499,7 @@ function renderAdminHome() {
   document.getElementById('who').textContent = `${S.admin.name}（管理者）`;
   const ov = S.admin.overview;
   let html = `<div class="adm">管理者モードです。全生徒の欠席・振替を確認し、代理で登録できます。<br>ここでの登録・変更・取消は<b>保護者にLINE通知は送られません</b>が、保護者の画面にはそのまま反映されます。</div>`;
-  html += `<h2>振替待ち　${ov.openTotal}件 / ${ov.summary.length}名</h2>`;
+  html += `<h2><span>振替待ち</span><span>${ov.openTotal}件・${ov.summary.length}名</span></h2>`;
   html += ov.summary.length
     ? ov.summary.map(x => `<div class="arow"><span class="n">${esc(x.name)}</span><span class="c">${x.count}件・最古 ${esc(fmtJa(x.oldest))}</span><button class="btn" data-adm="student" data-id="${esc(x.studentId)}">開く</button></div>`).join('')
     : `<div class="empty">振替待ちはありません</div>`;
@@ -514,18 +557,48 @@ async function renderIntegrity() {
 
 function renderAdminPicker(next) {
   enter('picker', () => renderAdminPicker(next));
-  let html = `<h2>生徒を選ぶ</h2><input class="search" id="q" placeholder="氏名で絞り込み" autocomplete="off">
+  const order = ['火', '水', '木', '金', '土', '日'];
+  const rooms = (S.admin && S.admin.dayRooms) || {};
+  const mins = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+  // 曜日ごとに、生徒をいちばん早いコマの時刻で並べる（2コマの生徒は1行にまとめる）
+  const byDow = {};
+  order.forEach(d => { byDow[d] = []; });
+  S.adminStudents.forEach(s => {
+    const per = {};
+    (s.slots || []).forEach(sl => { (per[sl.dow] = per[sl.dow] || []).push(sl.time); });
+    Object.keys(per).forEach(d => { if (byDow[d]) byDow[d].push({ s, times: per[d].sort((a, b) => mins(a) - mins(b)) }); });
+  });
+  order.forEach(d => byDow[d].sort((a, b) => mins(a.times[0]) - mins(b.times[0]) || a.s.name.localeCompare(b.s.name, 'ja')));
+  const days = order.filter(d => byDow[d].length);
+  const todayDow = '日月火水木金土'[new Date().getDay()];
+  if (!days.includes(S.pickerDow)) S.pickerDow = days.includes(todayDow) ? todayDow : days[0];
+
+  let html = `<h2>生徒を選ぶ</h2>
+    <div class="pickbar"><select id="pDow" aria-label="曜日">${days.map(d => `<option value="${d}" ${d === S.pickerDow ? 'selected' : ''}>${d}曜日</option>`).join('')}</select><span class="room" id="pRoom"></span></div>
+    <input class="search" id="q" placeholder="氏名で探す（すべての曜日から）" autocomplete="off">
     <div id="list"></div>`;
   $view.innerHTML = html;
-  const draw = kw => {
-    const list = S.adminStudents.filter(s => !kw || s.name.includes(kw));
-    document.getElementById('list').innerHTML = list.length
-      ? list.map(s => `<div class="arow"><span class="n">${esc(s.name)}</span><span class="go">${esc(s.room || '')}</span><button class="btn" data-id="${esc(s.id)}">選ぶ</button></div>`).join('')
-      : `<div class="empty">該当する生徒がいません</div>`;
-    document.getElementById('list').querySelectorAll('[data-id]').forEach(b => b.onclick = () => (next || renderAdminStudent)(b.dataset.id));
+  const $list = document.getElementById('list'), $room = document.getElementById('pRoom');
+  const row = (s, right) => `<div class="arow"><span class="n">${esc(s.name)}</span><span class="go">${esc(right)}</span><button class="btn" data-id="${esc(s.id)}">選ぶ</button></div>`;
+  const draw = () => {
+    const kw = document.getElementById('q').value.trim();
+    $room.textContent = (rooms[S.pickerDow] || []).join('・');
+    if (kw) {
+      const hit = S.adminStudents.filter(s => s.name.includes(kw));
+      $list.innerHTML = hit.length
+        ? hit.map(s => row(s, (s.slots || []).map(x => `${x.dow} ${x.time}`).join('、'))).join('')
+        : `<div class="empty">該当する生徒がいません</div>`;
+    } else {
+      // 時刻を名前の左に置き、時刻順に並べる（2コマの生徒は「16:00・17:00」）
+      $list.innerHTML = (byDow[S.pickerDow] || []).map(e =>
+        `<div class="arow"><span class="tm">${esc(e.times.join('・'))}</span><span class="n">${esc(e.s.name)}</span><button class="btn" data-id="${esc(e.s.id)}">選ぶ</button></div>`
+      ).join('') || `<div class="empty">この曜日の生徒はいません</div>`;
+    }
+    $list.querySelectorAll('[data-id]').forEach(b => b.onclick = () => (next || renderAdminStudent)(b.dataset.id));
   };
-  draw('');
-  document.getElementById('q').oninput = e => draw(e.target.value.trim());
+  document.getElementById('pDow').onchange = e => { S.pickerDow = e.target.value; draw(); };
+  document.getElementById('q').oninput = draw;
+  draw();
 }
 
 async function renderAdminStudent(studentId) {
@@ -540,9 +613,9 @@ async function renderAdminStudent(studentId) {
     let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
     const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}`).join('、') || '未登録';
     html += `<div class="arow"><span class="n">通常のコマ</span><span class="go">${esc(slotText)}</span>${(st.slots || []).length ? `<button class="btn" id="goMove">移動</button>` : ''}</div>`;
-    html += `<h2>振替待ち${open.length ? `　${open.length}件` : ''}</h2>`;
-    html += open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`;
-    if (done.length) html += `<h2>振替済み</h2>` + done.slice(0, 10).map(r => ticket(r)).join('');
+    html += `<h2><span>振替待ち</span>${open.length ? `<span>${open.length}件</span>` : ''}</h2>`;
+    html += `<div class="list">${open.length ? open.map(r => ticket(r)).join('') : `<div class="empty">振替待ちはありません</div>`}</div>`;
+    if (done.length) html += `<h2><span>振替済み</span></h2><div class="list">${done.slice(0, 10).map(r => ticket(r)).join('')}</div>`;
     html += `<div class="dock"><button class="btn primary" id="goAbs">この生徒の欠席を登録</button></div>`;
     $view.innerHTML = html;
     document.getElementById('goAbs').onclick = () => renderAbsence();
@@ -602,12 +675,12 @@ function renderMoveSlot(studentId) {
 }
 
 // ---------- 確認パネル ----------
-function confirmSheet(title, text, okLabel, onOk) {
+function confirmSheet(title, text, okLabel, onOk, opts = {}) {
   if (S.preview) { okLabel = 'プレビューのため送信できません'; onOk = null; }
   else if (S.admin) text += '\n（保護者へのLINE通知は送られません）';
   const el = document.createElement('div'); el.className = 'sheet';
   el.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p style="white-space:pre-line">${esc(text)}</p>
-    <button class="btn primary" id="ok">${esc(okLabel)}</button><button class="btn" id="ng">戻る</button></div>`;
+    <button class="btn primary${opts.cancel && onOk ? ' cancel' : ''}" id="ok">${esc(okLabel)}</button><button class="btn" id="ng">戻る</button></div>`;
   document.body.appendChild(el);
   const close = () => el.remove();
   el.querySelector('#ng').onclick = close;
@@ -719,8 +792,10 @@ function mockAdmin(action, p) {
     { id: 'S001', name: '山田太郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
     { id: 'S002', name: '山田次郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
     { id: 'S010', name: '鈴木一郎', room: 'B教室', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
+    { id: 'S011', name: '佐藤花子', room: 'A教室', slots: [{ dow: '土', time: '9:30' }] },
+    { id: 'S012', name: '高橋健', room: 'A教室', slots: [{ dow: '土', time: '13:30' }] },
   ];
-  if (action === 'home') return wait({ admin: true, name: '先生', students: st, slotOptions: { '火': ['16:00', '17:00'], '水': ['16:30', '17:30'], '木': ['16:30', '17:30'], '金': ['17:30'], '土': ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], '日': ['9:30', '10:30', '11:30'] }, overview: {
+  if (action === 'home') return wait({ admin: true, name: '先生', students: st, dayRooms: { '火': ['A教室'], '水': ['A教室'], '木': ['A教室'], '金': ['B教室'], '土': ['A教室', 'B教室'], '日': ['A教室'] }, slotOptions: { '火': ['16:00', '17:00'], '水': ['16:30', '17:30'], '木': ['16:30', '17:30'], '金': ['17:30'], '土': ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], '日': ['9:30', '10:30', '11:30'] }, overview: {
     openTotal: 4, summary: [
       { studentId: 'S002', name: '山田次郎', count: 2, oldest: '2026-08-29', items: [] },
       { studentId: 'S010', name: '鈴木一郎', count: 2, oldest: '2026-09-01', items: [] },
