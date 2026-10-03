@@ -675,6 +675,7 @@ function renderMoveSlot(studentId) {
     h += p.blockers.map(b => `<div class="issue" style="border-left-color:var(--danger);background:#fbeceb"><b>止める理由</b>：${esc(b)}</div>`).join('');
     h += p.warnings.map(w => `<div class="issue"><b>注意</b>：${esc(w)}</div>`).join('');
     if (p.ok && p.newWeeks.length) h += `<p class="lead" style="margin-top:10px">移動先に書き込む授業：${esc(p.newWeeks.join('、'))}</p>`;
+    if (p.ok) h += `<p class="lead">実行すると、移動元と移動先の列を上に詰めて並べ直します。ほかの生徒の欠席・振替の記録も、位置に合わせて自動で更新されます。</p>`;
     $plan.innerHTML = h;
     planned = p.ok ? p : null;
     $go.disabled = !p.ok;
