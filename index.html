@@ -164,6 +164,70 @@
   .issue{margin-bottom:8px;padding:10px 12px;border-radius:var(--r-s);background:var(--notice-tint);color:var(--notice);font-size:13px}
   .issue b{font-weight:700}
 
+
+  /* カリキュラム一覧 */
+  .curlink{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:14px 16px;cursor:pointer}
+  .curlink b{font-size:15px}
+  .curlink span{font-size:13px;color:var(--sub)}
+  .curfind{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .curfind input{flex:1;min-width:0;font-size:16px;border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px}
+  .curfind .btn{flex:none;padding:10px 16px}
+  .hits p{margin:4px 0 8px;font-size:13px;color:var(--sub)}
+  .hit{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:var(--r-s);padding:10px 12px;margin-bottom:6px;font-size:14px;cursor:pointer;font-feature-settings:"tnum" 1}
+  .curpos{margin:10px 0 18px;padding:12px 14px;border-radius:var(--r);background:var(--panel)}
+  .curpos .t{font-size:14px;font-weight:700}
+  .curpos .s{font-size:12px;color:var(--panel-sub);margin-top:2px}
+  .curbar{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;margin-top:10px}
+  .curbar i{height:8px;border-radius:2px;background:#e3d6c6}
+  .curbar i.on{background:var(--accent)}
+  .curbar i.here{background:var(--accent);box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--accent)}
+  .curbar i.gap{margin-left:6px}
+  .chaps{display:flex;gap:8px;margin:4px 0 14px}
+  .chap{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:var(--r);padding:8px 10px;font-size:15px;font-weight:700;color:var(--sub);cursor:pointer;line-height:1.3}
+  .chap small{display:block;font-size:11px;font-weight:500}
+  .chap[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .cat{margin-top:22px}
+  .cat h3{margin:0;font-size:16px;font-weight:700}
+  .cat .g{font-size:12px;color:var(--sub);margin-top:2px}
+  .cat .p{font-size:12px;color:var(--sub)}
+  .cat .list{margin-top:8px}
+  details.stg{border-bottom:1px solid var(--line)}
+  details.stg > summary{list-style:none;display:flex;align-items:baseline;gap:10px;padding:12px 2px;cursor:pointer}
+  details.stg > summary::-webkit-details-marker{display:none}
+  details.stg > summary .no{flex:none;width:5.2em;font-size:13px;font-weight:700;color:var(--accent);font-feature-settings:"tnum" 1}
+  details.stg > summary .tt{font-size:15px;font-weight:700}
+  details.stg > summary::after{content:"";margin-left:auto;flex:none;width:7px;height:7px;border:solid var(--faint);border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+  details.stg[open] > summary::after{transform:translateY(1px) rotate(-135deg)}
+  .lessons{padding:0 0 10px}
+  details.les{border-radius:var(--r-s)}
+  details.les summary{list-style:none;display:flex;gap:10px;align-items:baseline;padding:8px 6px;cursor:pointer;font-size:14px}
+  details.les summary::-webkit-details-marker{display:none}
+  details.les .code{flex:none;width:3.4em;font-weight:700;color:var(--accent);font-feature-settings:"tnum" 1}
+  details.les .lt{flex:1}
+  details.les p{margin:0 6px 8px calc(3.4em + 16px);padding:10px 12px;border-radius:var(--r-s);background:var(--muted);font-size:13.5px;line-height:1.7;color:var(--ink)}
+  details.les .ex{margin:0 6px 8px calc(3.4em + 16px);padding:10px 12px;border-radius:var(--r-s);background:var(--muted)}
+  details.les .ex p{margin:0;padding:0;background:none;font-size:13.5px;line-height:1.7}
+  details.les .ex .sh{font-size:12px;color:var(--sub);margin-bottom:4px}
+  details.stg > summary .tt small{display:block;font-size:12px;font-weight:500;color:var(--sub);margin-top:1px}
+  details.les .code{width:3.6em}
+  details.les[open] summary .lt{font-weight:700}
+  details.les.here{background:var(--accent-tint);scroll-margin-top:72px}
+  details.les.rev{border-bottom:1px solid var(--line);border-radius:0}
+  details.les.rev .code{color:var(--sub);font-weight:500;font-size:12px}
+  details.les.rev .lt{color:var(--sub)}
+  details.les.rev.here{border-radius:var(--r-s)}
+  .blkdesc{margin:0 6px 8px calc(5.2em + 12px);padding:10px 12px;border-radius:var(--r-s);background:var(--muted);font-size:13.5px;line-height:1.7}
+  details.stg.blk .lessons details.les .code{display:none}
+  details.stg.blk .lessons details.les summary{padding-left:calc(5.2em + 12px)}
+  details.stg.blk .lessons details.les p{margin-left:calc(5.2em + 12px)}
+  .gloss{margin-top:8px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--bg)}
+  .gloss summary{list-style:none;padding:9px 12px;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer}
+  .gloss summary::-webkit-details-marker{display:none}
+  .gloss dl{margin:0;padding:0 12px 10px}
+  .gloss dt{font-size:13.5px;font-weight:700;margin-top:8px}
+  .gloss dd{margin:2px 0 0;font-size:13px;color:var(--sub);line-height:1.7}
+  details.stg.here{background:var(--accent-tint);border-radius:var(--r-s);border-bottom-color:transparent;margin:2px -8px;padding:0 8px;scroll-margin-top:72px}
+  .curnote{margin-top:20px;font-size:12px;color:var(--faint)}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -179,7 +243,7 @@
 // =============================================================
 // 設定
 // =============================================================
-const LIFF_ID = '2011756125-bAh93kVs';   // LINEログインチャネル > LIFF で発行される ID
+const LIFF_ID = 'YOUR_LIFF_ID';   // LINEログインチャネル > LIFF で発行される ID
 const API_URL = 'https://script.google.com/macros/s/AKfycbwuH-fKM32HKDdRvK1PZDwoW413-jitvomI6Rc76W8TQwgbEpIre8ubIXc3eIRuSciA/exec';   // GAS の Web アプリ URL（外部ホスティング時に使用）
 const MOCK = window.__MOCK__ === true || /[?&]mock=1/.test(location.search) || (typeof liff === 'undefined' && !window.google);
 
@@ -191,6 +255,7 @@ let idToken = null;
 function withTimeout(promise, ms, label) {
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms))]);
 }
+const API_TIMEOUT_MS = 60000;   // Apps Script は起動直後に時間がかかることがあるため、長めに待つ
 async function api(action, params = {}) {
   if (MOCK) return mockApi(action, params);
   const body = { action, params, idToken };
@@ -199,8 +264,22 @@ async function api(action, params = {}) {
       .withSuccessHandler(s => { const r = JSON.parse(s); r.ok ? res(r.result) : rej(new Error(r.error)); })
       .withFailureHandler(e => rej(e)).apiEntry(JSON.stringify(body)));
   }
-  const r = await withTimeout(fetch(API_URL, { method: 'POST', body: JSON.stringify(body) }), 30000, `サーバーの応答がありません（${action}）`); // text/plain で送り、プリフライトを避ける
-  const j = await r.json();
+  // 待ち時間が長いときは、読み込み表示に経過秒数を出す（止まっているのか待っているのかを区別できるように）
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    const el = $view.querySelector('.loading');
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (el && sec >= 5) el.textContent = `サーバーの応答を待っています（${sec}秒）…`;
+  }, 1000);
+  let r;
+  try {
+    r = await withTimeout(fetch(API_URL, { method: 'POST', body: JSON.stringify(body) }), API_TIMEOUT_MS, 'TIMEOUT'); // text/plain で送り、プリフライトを避ける
+  } catch (e) {
+    throw new Error(e.message === 'TIMEOUT' ? `TIMEOUT:${action}` : `NETWORK:${action}:${e.message}`);
+  } finally { clearInterval(tick); }
+  let j;
+  try { j = await r.json(); } catch (e) { throw new Error(`BAD_RESPONSE:${action}:HTTP ${r.status}`); }
+  if (typeof j.ms === 'number') console.log(`[api] ${action} ${j.ms}ms`);
   if (!j.ok) throw new Error(j.error);
   return j.result;
 }
@@ -258,6 +337,11 @@ window.addEventListener('popstate', () => { if (ignorePop) { ignorePop = false; 
 
 function fail(e) { console.error(e); toast(messageFor(e.message)); }
 function messageFor(code) {
+  code = String(code || '');
+  // 通信まわりの失敗は「何が起きたか」と、教室に伝えるための記号を添える
+  if (code.startsWith('TIMEOUT:')) return `サーバーの応答に時間がかかっています。少し待ってから、もう一度読み込んでください。（${code}）`;
+  if (code.startsWith('NETWORK:')) return `サーバーにつながりませんでした。通信環境を確認して、もう一度読み込んでください。（${code}）`;
+  if (code.startsWith('BAD_RESPONSE:')) return `サーバーから想定外の応答がありました。教室までご連絡ください。（${code}）`;
   return ({
     NOT_REGISTERED: 'このLINEアカウントは教室に登録されていません。教室までご連絡ください。',
     busy: '混み合っています。少し待ってからもう一度お試しください。',
@@ -284,7 +368,8 @@ async function loadHome() {
     if (!S.cur || !S.students.some(s => s.id === S.cur)) S.cur = S.students[0]?.id || null;
     renderHome();
   } catch (e) {
-    $view.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div>`;
+    $view.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div><p style="margin-top:16px"><button class="btn primary" id="retry">もう一度読み込む</button></p>`;
+    document.getElementById('retry').onclick = loadHome;
   }
 }
 
@@ -312,8 +397,10 @@ function renderHome() {
   if (done.length) {
     html += `<h2><span>振替が決まっている欠席</span><span>${done.length}件</span></h2><div class="list">${done.map(r => ticket(r)).join('')}</div>`;
   }
+  html += `<h2><span>カリキュラム</span></h2><button class="curlink" id="goCur"><b>カリキュラム一覧を見る</b><span>全30ステージの学習内容と、授業報告に書かれたステージの位置を確認できます</span></button>`;
   html += `<div class="dock"><button class="btn primary" id="goAbs">欠席を連絡する</button></div>`;
   $view.innerHTML = html;
+  document.getElementById('goCur').onclick = () => renderCurriculum();
 
   $view.querySelectorAll('.tab').forEach(b => b.onclick = () => { S.cur = b.dataset.id; renderHome(); });
   document.getElementById('goAbs').onclick = () => renderAbsence();
@@ -685,6 +772,380 @@ function renderMoveSlot(studentId) {
     $go.disabled = !p.ok;
     $go.textContent = p.ok ? 'この内容で移動する' : '止める理由を解消してください';
   }
+}
+
+// カリキュラム（授業報告と同じ名前・番号）。公式シートの学習内容は sheet に補足として持つ。ロゴ・キャラクター・デザインは使わない
+// lessons: [名前, シートの学習内容（対応が明らかなときのみ）, 保護者向けの説明]
+const CREATE_DESC = 'これまでに学んだことを使って、自分で考えたゲームを自由に作る時間です。';
+const CURRICULUM = [
+  { chapter: '地の章', cats: [
+    { name: '初級', goal: '命令の種類を覚える・順次処理・ループ', pace: '低学年 5〜6か月／中学年 4か月／高学年以上 3か月',
+      words: [['命令（コマンド）', 'コンピュータへの指示のことです。「前に進む」「右を向く」のように、一つずつ動きを伝えます。'],
+              ['命令定義', 'いくつかの命令をまとめて名前を付け、新しい命令として使えるようにすることです。'],
+              ['順次処理', '命令を上から順番に、一つずつ実行していくことです。プログラムの最も基本的な動き方です。'],
+              ['ループ（繰り返し）', '同じ命令を何度も繰り返させる仕組みです。「10歩進む」を「1歩進む」を10回書かずに表せます。']],
+      items: [
+      { stage: 1, title: '天空の神殿（命令定義）', unit: '命令の種類を覚える', lessons: [
+        ['天空の神殿（命令定義）', 'マインクラフトの基本的な移動方法を覚える', 'ゲームの中でキャラクターを動かす基本の操作に慣れます。'],
+        ['天空の神殿（命令定義）', 'come, go の命令定義の学習', '「come（来る）」「go（進む）」という命令を使って、決まった動きをさせる方法を学びます。'],
+        ['天空の神殿（命令定義）', 'go の命令定義の中身を変える', '命令の中身を書き換えると動きが変わることを学びます。命令は自分で作り変えられる、という考え方の入口です。'],
+        ['天空の神殿（命令定義）', 'right, left, put の命令定義の学習', '「right（右）」「left（左）」「put（置く）」の命令を加え、向きを変えたりブロックを置いたりします。']] },
+      { stage: 2, title: '巨大炭鉱（順次処理）', unit: '順次処理を覚える', lessons: [
+        ['巨大炭鉱（順次処理）', '2〜5手順までの順次処理の学習', '2〜5個の命令を正しい順番に並べて、目的の動きを作ります。'],
+        ['巨大炭鉱（順次処理）', '6手順以上の順次処理の学習', '命令の数が増えても、順番を考えて組み立てられるようにします。'],
+        ['巨大炭鉱（順次処理）', '最短距離という考え方の学習', 'ゴールまでを、できるだけ少ない手順で進む方法を考えます。効率よく考える練習です。'],
+        ['巨大炭鉱（順次処理）', '拾うコマンドの学習＆順次処理のまとめ', 'アイテムを拾う命令を加え、ここまでの順次処理を総まとめします。']] },
+      { stage: 3, title: '巨大ピラミッド（ループ）', unit: 'ループの考え方', lessons: [
+        ['巨大ピラミッド（ループ）', 'ループの概念、意義の学習', '繰り返しの仕組みと、それを使うと何がうれしいのかを学びます。'],
+        ['巨大ピラミッド（ループ）', 'ループを使った練習問題', '繰り返しを使って、短いプログラムで同じ動きを作る練習をします。'],
+        ['巨大ピラミッド（ループ）', 'ループを使った練習問題（応用）', 'より複雑な場面で、繰り返しをどう使うかを考えます。'],
+        ['巨大ピラミッド（ループ）', 'ループのまとめ', '繰り返しの使い方を総まとめします。']] },
+      { block: '初級検定ステージ', desc: '初級（ステージ1〜3）で学んだ内容が身についているかを確かめるステージです。' },
+      { review: 'ステージ1ドリル', desc: 'ステージ1の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ2ドリル', desc: 'ステージ2の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ3ドリル', desc: 'ステージ3の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { block: '【エクストラステージ】ネザー要塞チャレンジ', desc: '初級で学んだことを使って挑戦する特別なステージです。' },
+    ] },
+    { name: '中級', goal: '多重ループ・条件・条件分岐', pace: '低学年 6〜8か月／中学年 6か月／高学年以上 4〜5か月',
+      words: [['多重ループ', 'ループの中に、さらにループを入れることです。「1列並べる」を何列も繰り返すと、面を作れます。'],
+              ['条件分岐', '「もし〇〇なら△△する」のように、状況によって動きを変える仕組みです。'],
+              ['not（〜でない）', '条件を反対にする書き方です。「壁があるなら」を「壁がないなら」にできます。'],
+              ['while (true) と break', 'while (true) は、止めるまでずっと繰り返す書き方です。break は、その繰り返しを途中で抜ける命令です。']],
+      items: [
+      { stage: 4, title: '監獄からの大脱出（多重ループ）', unit: '多重ループ', lessons: [
+        ['監獄からの大脱出（多重ループ）①', '多重ループの概念の学習', 'ループの中にループを入れる考え方を学びます。'],
+        ['監獄からの大脱出（多重ループ）②', '多重ループを使った練習問題', '多重ループを使って、広い範囲を少ない命令で動かす練習をします。'],
+        ['監獄からの大脱出（多重ループ）③', '「置く」を加えた多重ループの練習問題', 'ブロックを置く命令と多重ループを組み合わせ、形を作る練習をします。'],
+        ['監獄からの大脱出（多重ループ）④', '多重ループのまとめ', '多重ループの使い方を総まとめします。']] },
+      { block: '多重ループで家を作ろう！【ステージ４終了後トライ】', desc: 'ステージ4のあとに取り組む講座です。多重ループを使って、自分の家を建てます。' },
+      { stage: 5, title: '山岳地帯の巨大城（条件）', unit: '条件分岐', lessons: [
+        ['山岳地帯の巨大城（条件）①', '条件分岐の概念の学習', '「もし〇〇なら」で動きを変える仕組みを学びます。'],
+        ['山岳地帯の巨大城（条件）②', '条件分岐の意義の学習', '条件分岐を使うと、状況に合わせて動くプログラムが作れることを学びます。'],
+        ['山岳地帯の巨大城（条件）③', '「でない」の概念の学習（not の学習）', '条件を反対にする「〜でない」の考え方を学びます。'],
+        ['山岳地帯の巨大城（条件）④', '条件分岐のまとめ', '条件分岐の使い方を総まとめします。']] },
+      { stage: 6, title: '森の巨大洋館（条件の応用）', unit: '条件の応用、複数分岐', lessons: [
+        ['森の巨大洋館（条件の応用）①', '複数条件分岐の概念の学習', '「AならX、BならY、どちらでもなければZ」のように、分かれ道が3つ以上ある場合を学びます。'],
+        ['森の巨大洋館（条件の応用）②', 'while (true) と break の概念の学習', 'ずっと繰り返す書き方と、そこから抜け出す方法を学びます。'],
+        ['森の巨大洋館（条件の応用）③', '条件分岐と while (true) の関係の学習', '「条件を満たしたら繰り返しを止める」のように、2つを組み合わせる方法を学びます。'],
+        ['森の巨大洋館（条件の応用）④', '複数条件分岐のまとめ', '複数の分かれ道を持つプログラムを総まとめします。']] },
+      { block: '中級検定ステージ', desc: '中級（ステージ4〜6）で学んだ内容が身についているかを確かめるステージです。' },
+      { review: 'ステージ4ドリル', desc: 'ステージ4の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ5ドリル', desc: 'ステージ5の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ6ドリル', desc: 'ステージ6の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { block: '【エクストラステージ2】海底神殿', desc: '中級で学んだことを使って挑戦する特別なステージです。' },
+    ] },
+    { name: '上級', goal: '変数・配列・関数', pace: '低学年 8〜10か月／中学年 6〜7か月／高学年以上 4〜5か月',
+      words: [['変数', '数や文字を入れておく「名前付きの箱」です。中身を後から使ったり、書き換えたりできます。'],
+              ['配列', 'たくさんのデータを順番に並べてしまっておく入れ物です。何番目かを指定して取り出せます。'],
+              ['関数', '決まった処理をひとまとめにして名前を付けたものです。名前を呼ぶだけで、何度でも同じ処理を使えます。'],
+              ['引数（ひきすう）', '関数に渡す値のことです。渡す値を変えると、同じ関数でも結果を変えられます。']],
+      items: [
+      { stage: 7, title: '人口の町（変数）', unit: '変数', lessons: [
+        ['人口の町（変数）①', '変数の概念の学習', '値を入れておく「箱」という考え方を学びます。'],
+        ['人口の町（変数）②', '変数でできることを学習', '数を数えたり記録したりなど、変数を使うとできることを学びます。'],
+        ['人口の町（変数）③', '変数のリセットを学習', '変数の中身を最初の状態に戻す方法を学びます。'],
+        ['人口の町（変数）④', '変数のまとめ', '変数の使い方を総まとめします。']] },
+      { block: 'ミニゲーム', note: 'ステージ7のあとに取り組みます', desc: 'ステージ7で学んだ変数を使って、3つのミニゲームに取り組みます。', subs: [
+        ['ミニゲーム１', '変数を使ったミニゲームの1つ目です。'], ['ミニゲーム２', '変数を使ったミニゲームの2つ目です。'], ['ミニゲーム３', '変数を使ったミニゲームの3つ目です。']] },
+      { stage: 8, title: 'ハカセの秘密研究施設（配列）', unit: '配列', lessons: [
+        ['ハカセの秘密研究施設（配列）①', '配列の概念の学習', 'データを順番に並べてしまう入れ物という考え方を学びます。'],
+        ['ハカセの秘密研究施設（配列）②', '配列の意義の学習', 'たくさんのデータを一つずつ変数に入れるより、配列にまとめると扱いやすくなることを学びます。'],
+        ['ハカセの秘密研究施設（配列）③', '配列を応用して文字のコピーに挑戦', '配列を使って、文字の並びを写し取ることに挑戦します。'],
+        ['ハカセの秘密研究施設（配列）④', '配列のまとめ問題', '配列の使い方を総まとめします。']] },
+      { block: '討伐ゲーム', note: 'ステージ8のあとに取り組みます', desc: 'ステージ8で学んだ配列を使って、敵を倒すタイムアタックのミニゲームに3つ取り組みます。', subs: [
+        ['討伐ゲーム１', '配列を使って敵を倒す、タイムアタックのミニゲームの1つ目です。'], ['討伐ゲーム２', '2つ目の討伐ゲームです。'], ['討伐ゲーム３', '3つ目の討伐ゲームです。']] },
+      { stage: 9, title: '宇宙ステージ（関数）', unit: '関数', lessons: [
+        ['宇宙ステージ（関数）①', '関数の概念の学習', '処理をひとまとめにして名前を付ける考え方を学びます。'],
+        ['宇宙ステージ（関数）②', '関数でプログラムが短縮できることを学習', '同じ処理を関数にまとめると、プログラムが短く分かりやすくなることを学びます。'],
+        ['宇宙ステージ（関数）③', '引数ありの関数の意義を学習', '関数に値を渡して、使うたびに少しずつ違う動きをさせる方法を学びます。'],
+        ['宇宙ステージ（関数）④', '関数のまとめ', '関数の使い方を総まとめします。']] },
+      { block: '上級検定ステージ', desc: '上級（ステージ7〜9）で学んだ内容が身についているかを確かめるステージです。' },
+      { review: 'ステージ7ドリル', desc: 'ステージ7の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ8ドリル', desc: 'ステージ8の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { review: 'ステージ9ドリル', desc: 'ステージ9の内容を復習するためのステージです。カリキュラムどおりに進んでいる場合は取り組みません。' },
+      { block: '【エクストラステージ3】エンドシティ', desc: '上級で学んだことを使って挑戦する特別なステージです。' },
+    ] },
+    { name: '応用講座', goal: '座標・乱数・創作プログラム（上級クリア後の受講を推奨）', pace: '中学年 3〜5か月／高学年以上 3か月',
+      words: [['座標', '場所を数字の組で表す方法です。マインクラフトでは、x が東西、z が南北、y が高さを表します。'],
+              ['相対座標・絶対座標', '自分の今いる場所を基準にした表し方が相対座標、世界全体で決まった位置で表すのが絶対座標です。'],
+              ['乱数', 'コンピュータが選ぶ、でたらめな数です。サイコロのように毎回結果が変わります。'],
+              ['確率', '物事の起こりやすさです。乱数を使うと「10回に1回だけ起きる」といった動きを作れます。'],
+              ['不等号', '＜ や ＞ のように、数の大小を比べる記号です。']],
+      items: [
+      { stage: 10, title: '座標！（座標）', unit: '座標', lessons: [
+        ['座標！（座標）①', 'x 座標、z 座標の概念、利用方法について学習', '地面の上の位置を、東西と南北の2つの数で表す方法を学びます。'],
+        ['座標！（座標）②', 'y 座標の概念について学習', '高さを表す数について学びます。'],
+        ['座標！（座標）③', '相対座標、絶対座標について学習', '「今いる場所から3つ先」と「この地点」の2通りの表し方を学びます。'],
+        ['座標！（座標）④', '拠点づくりにチャレンジ', '座標を使って、思った場所に拠点を作ることに挑戦します。']] },
+      { stage: 11, title: '乱数！（乱数）', unit: '乱数', lessons: [
+        ['乱数！（乱数）①', '乱数の意義について学習／電子サイコロを作成', 'でたらめな数の使いみちを学び、サイコロのように数を出すプログラムを作ります。'],
+        ['乱数！（乱数）②', 'ランダムウォークプログラム／おみくじプログラム', 'でたらめな方向に一歩ずつ進む動きや、引くたびに結果が変わるおみくじを作ります。'],
+        ['乱数！（乱数）③', '乱数で迷路プログラム①', '乱数を使って、毎回形の変わる迷路を作ります。'],
+        ['乱数！（乱数）④', '乱数で迷路プログラム②', '迷路のプログラムを仕上げます。']] },
+      { stage: 12, title: '確率・創作！（確率）', unit: '確率・創作', lessons: [
+        ['確率・創作！（確率）①', '乱数で確率表現①（不等号の学習）', '乱数と大小の比較を組み合わせて、「ときどき起きる」動きを作ります。'],
+        ['確率・創作！（確率）②', '乱数で確率表現②', '確率の表し方をさらに練習します。'],
+        ['確率・創作！（確率）③', '確率を使ったミニゲーム①', '確率を使ったミニゲームを作ります。'],
+        ['確率・創作！（確率）④', '確率を使ったミニゲーム②', 'ミニゲームを仕上げます。']] },
+      { block: '応用検定', desc: '応用講座（ステージ10〜12）で学んだ内容が身についているかを確かめるステージです。' },
+    ] },
+    { name: 'JavaScript講座', goal: 'それぞれの表記方法を覚える・命令定義・順次処理・for・while・if・変数・配列・関数', pace: '',
+      words: [['JavaScript（ジャバスクリプト）', 'ウェブサイトやゲームなどで広く使われているプログラミング言語です。プログラムを文字で書きます。'],
+              ['for・while', 'どちらも繰り返しの書き方です。for は回数を決めて、while は条件を満たす間、繰り返します。'],
+              ['if', '条件分岐の書き方です。「もし〇〇なら」を表します。']],
+      items: [
+      { stage: 13, title: 'JavaScriptステージ"初級"', unit: 'JavaScript', lessons: [
+        ['JavaScriptステージ"初級"①', '命令定義', 'これまで学んだ命令定義を、JavaScript の書き方で表します。'],
+        ['JavaScriptステージ"初級"②', '順次処理', '順番に命令を実行するプログラムを、JavaScript で書きます。'],
+        ['JavaScriptステージ"初級"③', 'for①', '回数を決めた繰り返しの書き方を学びます。'],
+        ['JavaScriptステージ"初級"④', 'for②', '回数を決めた繰り返しを、さらに練習します。']] },
+      { stage: 14, title: 'JavaScriptステージ"中級"', unit: 'JavaScript', lessons: [
+        ['JavaScriptステージ"中級"①', 'while①', '条件を満たす間くり返す書き方を学びます。'],
+        ['JavaScriptステージ"中級"②', 'while②', '条件を使った繰り返しを、さらに練習します。'],
+        ['JavaScriptステージ"中級"③', 'if①', '「もし〇〇なら」の条件分岐の書き方を学びます。'],
+        ['JavaScriptステージ"中級"④', 'if②', '条件分岐を、さらに練習します。']] },
+      { stage: 15, title: 'JavaScriptステージ"上級"', unit: 'JavaScript', lessons: [
+        ['JavaScriptステージ"上級"①', '変数', '変数を JavaScript の書き方で扱います。'],
+        ['JavaScriptステージ"上級"②', '配列', '配列を JavaScript の書き方で扱います。'],
+        ['JavaScriptステージ"上級"③', '関数①', '関数を JavaScript の書き方で作ります。'],
+        ['JavaScriptステージ"上級"④', '関数②', '関数を、さらに練習します。']] },
+    ] },
+  ] },
+  { chapter: '天の章', cats: [
+    { name: '2Dアクションゲームを作ろう！', goal: 'キノコでパワーアップ!?', pace: '中学年 4か月／高学年以上 3か月',
+      words: [['2Dアクションゲーム', '横から見た画面で、キャラクターが走ったりジャンプしたりして進むゲームです。'],
+              ['重力', 'ゲームの中で、キャラクターが下に落ちるようにする仕組みです。'],
+              ['中間セーブ', 'やられたときに、途中の地点からやり直せるようにする仕組みです。'],
+              ['アニメーション', '絵を少しずつ切り替えて、動いているように見せることです。']],
+      items: [
+      { stage: 16, title: 'ゲーム開発の世界へようこそ！', unit: '', lessons: [
+        ['ゲーム開発の世界へようこそ！①', 'キャラクターを動かす、ゴールを作る', 'キャラクターを操作できるようにし、たどり着くゴールを作ります。'],
+        ['ゲーム開発の世界へようこそ！②', '重力をつける', 'ジャンプしたキャラクターが自然に落ちてくるようにします。'],
+        ['ゲーム開発の世界へようこそ！③', 'バネと落下を作る', '乗ると跳ねるバネや、落ちたらやり直しになる仕組みを作ります。'],
+        ['ゲーム開発の世界へようこそ！④', 'トゲとスコアを作る', '触れるとやられる障害物と、点数の仕組みを作ります。']] },
+      { stage: 17, title: 'ゲームの作りこみって何？', unit: '', lessons: [
+        ['ゲームの作りこみって何？①', '押すボタンを作る', '踏むと仕掛けが動くボタンを作ります。'],
+        ['ゲームの作りこみって何？②', '動く床を作る', '左右や上下に動く足場を作ります。'],
+        ['ゲームの作りこみって何？③', 'アイテムを作る', '取ると効果があるアイテムを作ります。'],
+        ['ゲームの作りこみって何？④', 'ボスを作る', 'ゲームの山場になる強い敵を作ります。']] },
+      { stage: 18, title: 'オリジナル2Dアクションゲームを作ってみよう！', unit: '', lessons: [
+        ['オリジナル2Dアクションゲームを作ってみよう！①', '背景とアニメーションをつける', '背景を描き、キャラクターが動いて見えるようにします。'],
+        ['オリジナル2Dアクションゲームを作ってみよう！②', '中間セーブと敵を作る', '途中からやり直せる地点と、敵を作ります。'],
+        ['創作活動！自由にゲームを開発してみよう！', '', CREATE_DESC]] },
+    ] },
+    { name: 'シューティングゲームを作ろう！', goal: '沢山の敵を配列で管理！', pace: '中学年 4か月／高学年以上 3か月',
+      words: [['シューティングゲーム', '弾を撃って敵を倒しながら進むゲームです。'],
+              ['無敵時間', 'ダメージを受けた直後の短い間、続けてダメージを受けないようにする仕組みです。'],
+              ['配列で管理', 'たくさんの敵を一つずつ別々に扱うのではなく、配列にまとめて扱うことです。地の章で学んだ配列を使います。']],
+      items: [
+      { stage: 19, title: '配列×ゲーム開発', unit: '', lessons: [
+        ['配列×ゲーム開発①', 'プレイヤーを作る、弾を発射できるようにする', '自分の機体を作り、弾を撃てるようにします。'],
+        ['配列×ゲーム開発②', 'ダメージと無敵時間をつける', '敵に当たるとダメージを受け、直後はしばらく無敵になるようにします。'],
+        ['配列×ゲーム開発③', '敵を出現させる①', '敵が現れる仕組みを作ります。'],
+        ['配列×ゲーム開発④', '敵を出現させる②', '敵の出現を、配列を使って管理します。']] },
+      { stage: 20, title: 'ゲーム性の演出', unit: '', lessons: [
+        ['ゲーム性の演出①', '敵を出現させる③', '敵の現れ方を工夫して、ゲームを面白くします。'],
+        ['ゲーム性の演出②', 'ボスを出現させる①', '強い敵（ボス）を作ります。'],
+        ['ゲーム性の演出③', 'ボスを出現させる②', 'ボスの動きを仕上げます。'],
+        ['ゲーム性の演出④', 'アイテムを作る', '取ると効果があるアイテムを作ります。']] },
+      { stage: 21, title: 'オリジナルシューティングゲームを作ってみよう！', unit: '', lessons: [
+        ['オリジナルシューティングゲームを作ってみよう！', 'アイテムを追加する', 'アイテムの種類を増やします。'],
+        ['オリジナルシューティングゲームを作ってみよう！', '', 'オリジナルのシューティングゲーム作りを進めます。'],
+        ['創作活動！シューティングゲーム開発にチャレンジ！', '', '学んだことを生かして、自分で考えたシューティングゲームを作ります。']] },
+    ] },
+    { name: 'ミニゲームをデザイン！', goal: '発想をゲームに落とし込め！', pace: '中学年 4か月／高学年以上 3か月',
+      words: [['ミニゲーム', '短い時間で遊べる小さなゲームです。いくつかのミニゲームを作りながら、ゲームの考え方を学びます。'],
+              ['コンセプト', 'どんなゲームにするかという、中心となる考えです。'],
+              ['難易度調整', 'ゲームが簡単すぎず難しすぎないように、遊びやすさを整えることです。']],
+      items: [
+      { stage: 22, title: 'ミニゲーム１：リズムゲーム', unit: 'コンセプトの確認・ゲームの完成・難易度調整・ゲームの改良', lessons: [
+        ['ミニゲーム１：リズムゲーム', '', 'リズムに合わせて操作するミニゲームを、3回かけて作ります。'],
+        ['ミニゲーム１：リズムゲーム', '', 'リズムに合わせて操作するミニゲームを、3回かけて作ります。'],
+        ['ミニゲーム１：リズムゲーム', '', 'リズムに合わせて操作するミニゲームを、3回かけて作ります。']] },
+      { stage: 23, title: 'ミニゲーム２：ナッツ＆ハムスター', unit: '', lessons: [
+        ['ミニゲーム２：ナッツ＆ハムスター', '', '「ナッツ＆ハムスター」というミニゲームを、3回かけて作ります。'],
+        ['ミニゲーム２：ナッツ＆ハムスター', '', '「ナッツ＆ハムスター」というミニゲームを、3回かけて作ります。'],
+        ['ミニゲーム２：ナッツ＆ハムスター', '', '「ナッツ＆ハムスター」というミニゲームを、3回かけて作ります。']] },
+      { stage: 24, title: 'ミニゲーム３：雷落とし', unit: '', lessons: [
+        ['ミニゲーム３：雷落とし', '', '「雷落とし」というミニゲームを、2回かけて作ります。'],
+        ['ミニゲーム３：雷落とし', '', '「雷落とし」というミニゲームを、2回かけて作ります。'],
+        ['創作活動！ミニゲーム開発にチャレンジ！', '', 'ここまでのミニゲーム作りを生かして、自分で考えたミニゲームを作ります。']] },
+    ] },
+    { name: 'JavaScriptでゲーム開発をしよう！', goal: '', pace: '中学年 4か月／高学年以上 3か月',
+      words: [['カーソル', '画面上で、今選んでいる場所を示す印です。'],
+              ['タレット・照準', 'タレットは砲台、照準は狙いを定める印のことです。'],
+              ['回路と NOT・AND・OR・XOR', '信号のオン・オフの組み合わせで動きを決める仕組みです。NOT は反対にする、AND は両方オンのときオン、OR はどちらかがオンのときオン、XOR は片方だけがオンのときオンになります。']],
+      items: [
+      { stage: 25, title: 'JavaScriptでゲーム開発１：フライングペンギン', unit: '', lessons: [
+        ['JavaScriptでゲーム開発１：フライングペンギン', 'JavaScriptゲームを作ってみよう', 'JavaScript で書く、最初のゲームを作ります。']] },
+      { stage: 26, title: 'JavaScriptでゲーム開発２：スネークゲーム', unit: '', lessons: [
+        ['JavaScriptでゲーム開発２：スネークゲーム', 'ヘビを作ってみよう', 'エサを食べると長くなるヘビを作ります。'],
+        ['JavaScriptでゲーム開発２：スネークゲーム', 'ヘビの動きを調整しよう', 'ヘビが思いどおりに動くように調整します。']] },
+      { stage: 27, title: 'JavaScriptでゲーム開発３：マインスイーパ', unit: '', lessons: [
+        ['JavaScriptでゲーム開発３：マインスイーパ', 'カーソルを使って動かせるようにしよう', 'マスを選ぶ印を動かせるようにします。'],
+        ['JavaScriptでゲーム開発３：マインスイーパ', 'マスの動作を作ろう＆クリア判定をしよう', 'マスを開けたときの動きと、クリアしたかどうかの判定を作ります。']] },
+      { stage: 28, title: 'JavaScriptでゲーム開発４：タレット', unit: '', lessons: [
+        ['JavaScriptでゲーム開発４：タレット', 'タレットと照準を表示しよう', '砲台と狙いの印を画面に出します。'],
+        ['JavaScriptでゲーム開発４：タレット', '弾を発射させる＆敵を作ってみよう', '弾を撃てるようにし、敵を作ります。'],
+        ['JavaScriptでゲーム開発４：タレット', 'アイテムを作ってみよう①', 'アイテムを作ります。'],
+        ['JavaScriptでゲーム開発４：タレット', 'アイテムを作ってみよう②', 'アイテムの種類を増やします。'],
+        ['JavaScriptでゲーム開発４：タレット', 'アイテムを作ってみよう③', 'アイテムを仕上げます。']] },
+      { stage: 29, title: 'JavaScriptでゲーム開発５：回路', unit: '', lessons: [
+        ['JavaScriptでゲーム開発５：回路', 'カーソルを作ろう', '選んでいる場所を示す印を作ります。'],
+        ['JavaScriptでゲーム開発５：回路', 'ワイヤーの状態を切り替えられるようにしよう①', '信号が通っている・通っていないを切り替えられるようにします。'],
+        ['JavaScriptでゲーム開発５：回路', 'ワイヤーの状態を切り替えられるようにしよう②', '切り替えの仕組みを仕上げます。'],
+        ['JavaScriptでゲーム開発５：回路', 'NOTゲートを作ろう', '信号を反対にする部品を作ります。'],
+        ['JavaScriptでゲーム開発５：回路', 'AND, OR, XORゲートを作ろう', '2つの信号の組み合わせで結果が決まる部品を作ります。']] },
+      { stage: 30, title: '創作活動！JavaScriptでオリジナルゲームを作ってみよう！', unit: '', single: true, lessons: [
+        ['創作活動！JavaScriptでオリジナルゲームを作ってみよう！', '', 'JavaScript で学んだことを使って、自分で考えたゲームを自由に作ります。']] },
+    ] },
+  ] },
+];
+
+const lessonCode = (it, i) => it.single ? `${it.stage}` : `${it.stage}-${i + 1}`;
+/** カリキュラムを、探しやすい一覧にする（ステージの回・検定などのまとまり・その中の小項目・復習用） */
+function curItems() {
+  if (S._cur) return S._cur;
+  const list = [], stages = {};
+  CURRICULUM.forEach(c => c.cats.forEach(k => {
+    const nums = k.items.filter(i => i.stage).map(i => i.stage);
+    const range = `${Math.min(...nums)}〜${Math.max(...nums)}`;
+    let last = 0;
+    k.items.forEach(it => {
+      const base = { chapter: c.chapter, cat: k.name, after: last, range };
+      if (it.stage) {
+        last = it.stage;
+        stages[it.stage] = { title: it.title, chapter: c.chapter, cat: k.name, count: it.lessons.length };
+        it.lessons.forEach((l, i) => list.push({ kind: 'lesson', stage: it.stage, idx: i, code: lessonCode(it, i), title: l[0], sheet: l[1], desc: l[2], chapter: c.chapter, cat: k.name }));
+      } else if (it.block) {
+        it._id = 'b' + list.length;
+        list.push({ ...base, kind: 'block', id: it._id, title: it.block, desc: it.desc });
+        (it.subs || []).forEach((sub, i) => { const id = `${it._id}s${i}`; list.push({ ...base, kind: 'sub', id, parent: it.block, parentId: it._id, n: i + 1, title: sub[0], desc: sub[1] }); });
+      } else if (it.review) {
+        it._id = 'r' + list.length;
+        list.push({ ...base, kind: 'review', id: it._id, title: it.review, desc: it.desc });
+      }
+    });
+  }));
+  return (S._cur = { list, stages });
+}
+/** 授業報告の表記（8-3、【ステージ8-3】）、ステージ番号（8）、言葉（検定・ドリルなど）で探す */
+function curSearch(q) {
+  const { list, stages } = curItems();
+  const norm = x => String(x || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+  const n = norm(q).replace(/(\d)[ー−‐–—―-](?=\d)/g, '$1-');   // 数字にはさまれた横棒だけを区切りとみなす
+  if (!n) return [];
+  let m = n.match(/(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const exact = list.find(x => x.kind === 'lesson' && x.code === `${+m[1]}-${+m[2]}`);
+    const single = list.find(x => x.kind === 'lesson' && x.stage === +m[1] && x.idx === +m[2] - 1);
+    return [exact || single].filter(Boolean);
+  }
+  m = n.match(/^【?(?:ステージ|stage)?(\d{1,2})】?$/);
+  if (m) return stages[+m[1]] ? [{ kind: 'stage', stage: +m[1], ...stages[+m[1]] }] : [];
+  const key = n.replace(/[【】]/g, '');
+  const stageHits = Object.keys(stages).filter(k => norm(stages[k].title).includes(key)).map(k => ({ kind: 'stage', stage: +k, ...stages[k] }));
+  const hitStages = new Set(stageHits.map(h => h.stage));
+  const itemHits = list.filter(x => norm(x.title).replace(/[【】]/g, '').includes(key) && !(x.kind === 'lesson' && hitStages.has(x.stage)));
+  // まとまり（ミニゲームなど）と、その中の小項目が両方当たったら、小項目を優先して出す
+  const subParents = new Set(itemHits.filter(x => x.kind === 'sub').map(x => x.parentId));
+  return stageHits.concat(itemHits.filter(x => !(x.kind === 'block' && subParents.has(x.id) && itemHits.filter(y => y.parentId === x.id).length === 1))).slice(0, 10);
+}
+function curLabel(h) {
+  if (h.kind === 'lesson') return `${h.code}　${h.title}`;
+  if (h.kind === 'stage') return `ステージ${h.stage}　${h.title}`;
+  if (h.kind === 'review') return `${h.title}（復習用）`;
+  return h.title;
+}
+
+/** カリキュラム一覧 */
+function renderCurriculum() {
+  enter('curriculum', renderCurriculum);
+  const { stages } = curItems();
+  const sel = S.curSel || null;
+  const isStageKind = sel && (sel.kind === 'lesson' || sel.kind === 'stage');
+  const selStage = sel ? (isStageKind ? sel.stage : sel.after) : 0;
+  const chapIdx = sel ? CURRICULUM.findIndex(c => c.chapter === sel.chapter) : (S.curChap || 0);
+  S.curChap = chapIdx;
+  let html = `<h2><span>授業報告の内容で探す</span></h2>
+    <div class="curfind"><input id="curQ" type="search" value="${esc(S.curQ || '')}" placeholder="例：8-3、8、検定、ドリル" enterkeyhint="search" autocomplete="off"><button class="btn primary" id="curGo">探す</button></div>`;
+  if (S.curHits && S.curHits.length > 1) {
+    html += `<div class="hits"><p>${S.curHits.length}件見つかりました。授業報告にあったものを選んでください。</p>${S.curHits.map((h, i) => `<button class="hit" data-i="${i}">${esc(curLabel(h))}</button>`).join('')}</div>`;
+  } else if (S.curHits && !S.curHits.length) {
+    html += `<div class="hits"><p>見つかりませんでした。「8-3」のような番号か、「検定」「ドリル」などの言葉で探してください。</p></div>`;
+  }
+  if (sel) {
+    let head, sub;
+    const st = stages[selStage];
+    if (sel.kind === 'lesson') {
+      head = `${sel.code}「${sel.title}」`;
+      sub = st.count > 1 ? `ステージ${sel.stage}の${sel.idx + 1}回目です。全30ステージのうち ${sel.stage}番目のステージです。` : `全30ステージのうち ${sel.stage}番目のステージです。`;
+    } else if (sel.kind === 'stage') { head = `ステージ${sel.stage}「${sel.title}」`; sub = `全30ステージのうち ${sel.stage}番目のステージです。`; }
+    else if (sel.kind === 'review') { head = `「${sel.title}」`; sub = `復習用のステージです。カリキュラムどおりに進んでいる場合は取り組みません。`; }
+    else if (sel.kind === 'sub') { head = `「${sel.title}」`; sub = `「${sel.parent}」の${sel.n}つ目です。ステージ${sel.after}「${st.title}」のあとに取り組みます。`; }
+    else { head = `「${sel.title}」`; sub = `ステージ${sel.after}「${st.title}」のあとに取り組む内容です（${sel.cat}：ステージ${sel.range}）。`; }
+    html += `<div class="curpos"><div class="t">${esc(head)}</div><div class="s">${esc(sub)}</div><div class="s">${esc(sel.chapter)}・${esc(sel.cat)}</div>
+      <div class="curbar" aria-hidden="true">${[...Array(30).keys()].map(i => i + 1).map(n => `<i class="${n < selStage || (!isStageKind && n === selStage) ? 'on' : n === selStage ? 'here' : ''}${n === 16 ? ' gap' : ''}"></i>`).join('')}</div></div>`;
+  }
+  html += `<div class="chaps" role="tablist">${CURRICULUM.map((c, i) => `<button class="chap" role="tab" aria-selected="${i === chapIdx}" data-i="${i}">${esc(c.chapter)}<small>ステージ${i ? '16〜30' : '1〜15'}</small></button>`).join('')}</div>`;
+  const isSel = id => sel && sel.id === id;
+  CURRICULUM[chapIdx].cats.forEach(k => {
+    html += `<section class="cat"><h3>${esc(k.name)}</h3>${k.goal ? `<div class="g">${esc(k.goal)}</div>` : ''}${k.pace ? `<div class="p">達成の目安：${esc(k.pace)}</div>` : ''}`;
+    if (k.words && k.words.length) html += `<details class="gloss"><summary>このカテゴリで出てくる言葉</summary><dl>${k.words.map(w => `<dt>${esc(w[0])}</dt><dd>${esc(w[1])}</dd>`).join('')}</dl></details>`;
+    html += `<div class="list">`;
+    k.items.forEach(it => {
+      if (it.review) {   // 復習用：小さな行
+        html += `<details class="les rev${isSel(it._id) ? ' here' : ''}" id="${it._id}" ${isSel(it._id) ? 'open' : ''}><summary><span class="code">復習用</span><span class="lt">${esc(it.review)}</span></summary><p>${esc(it.desc)}</p></details>`;
+        return;
+      }
+      if (it.block) {    // 検定・エクストラ・ミニゲームなど：ステージと同じ重み
+        const subSel = sel && sel.kind === 'sub' && sel.parentId === it._id;
+        const open = isSel(it._id) || subSel;
+        html += `<details class="stg blk${isSel(it._id) ? ' here' : ''}" id="${it._id}" ${open ? 'open' : ''}><summary><span class="no"></span><span class="tt">${esc(it.block)}${it.note ? `<small>${esc(it.note)}</small>` : ''}</span></summary>`;
+        if (it.subs) {
+          html += `<div class="lessons"><p class="blkdesc">${esc(it.desc)}</p>`;
+          it.subs.forEach((sub, i) => {
+            const id = `${it._id}s${i}`;
+            html += `<details class="les${isSel(id) ? ' here' : ''}" id="${id}" ${isSel(id) ? 'open' : ''}><summary><span class="code"></span><span class="lt">${esc(sub[0])}</span></summary><p>${esc(sub[1])}</p></details>`;
+          });
+          html += `</div></details>`;
+        } else {
+          html += `<div class="lessons"><p class="blkdesc">${esc(it.desc)}</p></div></details>`;
+        }
+        return;
+      }
+      const open = sel && isStageKind && sel.stage === it.stage;
+      html += `<details class="stg${open && sel.kind === 'stage' ? ' here' : ''}" id="stg${it.stage}" ${open ? 'open' : ''}><summary><span class="no">ステージ${it.stage}</span><span class="tt">${esc(it.title)}${it.unit ? `<small>${esc(it.unit)}</small>` : ''}</span></summary><div class="lessons">`;
+      it.lessons.forEach((l, i) => {
+        const code = lessonCode(it, i);
+        const here = sel && sel.kind === 'lesson' && sel.code === code;
+        html += `<details class="les${here ? ' here' : ''}" id="les-${code}" ${here ? 'open' : ''}><summary><span class="code">${code}</span><span class="lt">${esc(l[0])}</span></summary>
+          <div class="ex">${l[1] ? `<div class="sh">公式カリキュラムの学習内容：${esc(l[1])}</div>` : ''}<p>${esc(l[2])}</p></div></details>`;
+      });
+      html += `</div></details>`;
+    });
+    html += `</div></section>`;
+  });
+  html += `<p class="curnote">カリキュラムは改定や順序が変更される場合があります。各回の説明は、保護者の方向けに内容をかみくだいたものです。</p>`;
+  $view.innerHTML = html;
+
+  const rerender = () => { restoring = true; try { renderCurriculum(); } finally { restoring = false; } };
+  const focusSel = () => {
+    const s2 = S.curSel; if (!s2) return;
+    const el = document.getElementById(s2.kind === 'lesson' ? 'les-' + s2.code : s2.kind === 'stage' ? 'stg' + s2.stage : s2.id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const choose = h => { S.curSel = h; S.curHits = null; rerender(); focusSel(); };
+  const go = () => {
+    const q = document.getElementById('curQ').value; S.curQ = q;
+    const hits = curSearch(q);
+    if (hits.length === 1) return choose(hits[0]);
+    S.curSel = null; S.curHits = q.trim() ? hits : null; rerender();
+  };
+  document.getElementById('curGo').onclick = go;
+  document.getElementById('curQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  $view.querySelectorAll('.hit').forEach(b => b.onclick = () => choose(S.curHits[+b.dataset.i]));
+  $view.querySelectorAll('.chap').forEach(b => b.onclick = () => { S.curChap = +b.dataset.i; if (S.curSel && S.curSel.chapter !== CURRICULUM[S.curChap].chapter) S.curSel = null; rerender(); });
 }
 
 // ---------- 入会・退会（管理者） ----------
