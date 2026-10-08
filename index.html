@@ -256,6 +256,8 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms))]);
 }
 const API_TIMEOUT_MS = 60000;   // Apps Script は起動直後に時間がかかることがあるため、長めに待つ
+// 読み込みだけの操作。通信の失敗時は1回だけ自動でやり直す（書き込みは二重登録を避けるため、やり直さない）
+const READ_ACTIONS = ['home', 'candidates', 'transferDates', 'availability', 'ledgerOf', 'adminOverview', 'adminStudents', 'previewHome', 'integrity', 'enrollOptions', 'planMove', 'planEnroll', 'planWithdraw'];
 async function api(action, params = {}) {
   if (MOCK) return mockApi(action, params);
   const body = { action, params, idToken };
@@ -264,6 +266,17 @@ async function api(action, params = {}) {
       .withSuccessHandler(s => { const r = JSON.parse(s); r.ok ? res(r.result) : rej(new Error(r.error)); })
       .withFailureHandler(e => rej(e)).apiEntry(JSON.stringify(body)));
   }
+  try {
+    return await callServer(action, body);
+  } catch (e) {
+    const transient = /^(BAD_RESPONSE|NETWORK):/.test(e.message);
+    if (!transient || !READ_ACTIONS.includes(action)) throw e;
+    console.warn('[api] retry', action, e.message);
+    await new Promise(r => setTimeout(r, 1500));
+    return callServer(action, body);
+  }
+}
+async function callServer(action, body) {
   // 待ち時間が長いときは、読み込み表示に経過秒数を出す（止まっているのか待っているのかを区別できるように）
   const t0 = Date.now();
   const tick = setInterval(() => {
@@ -271,14 +284,19 @@ async function api(action, params = {}) {
     const sec = Math.round((Date.now() - t0) / 1000);
     if (el && sec >= 5) el.textContent = `サーバーの応答を待っています（${sec}秒）…`;
   }, 1000);
-  let r;
+  let r, text;
   try {
     r = await withTimeout(fetch(API_URL, { method: 'POST', body: JSON.stringify(body) }), API_TIMEOUT_MS, 'TIMEOUT'); // text/plain で送り、プリフライトを避ける
+    text = await r.text();
   } catch (e) {
     throw new Error(e.message === 'TIMEOUT' ? `TIMEOUT:${action}` : `NETWORK:${action}:${e.message}`);
   } finally { clearInterval(tick); }
   let j;
-  try { j = await r.json(); } catch (e) { throw new Error(`BAD_RESPONSE:${action}:HTTP ${r.status}`); }
+  try { j = JSON.parse(text); } catch (e) {
+    // Google のエラーページが返ってきた場合は、その題名を添える（原因の切り分け用）
+    const title = (text.match(/<title>([^<]*)<\/title>/i) || [])[1] || '';
+    throw new Error(`BAD_RESPONSE:${action}:HTTP ${r.status}${title ? ' ' + title.trim().slice(0, 40) : ''}`);
+  }
   if (typeof j.ms === 'number') console.log(`[api] ${action} ${j.ms}ms`);
   if (!j.ok) throw new Error(j.error);
   return j.result;
