@@ -227,6 +227,15 @@
   .gloss dt{font-size:13.5px;font-weight:700;margin-top:8px}
   .gloss dd{margin:2px 0 0;font-size:13px;color:var(--sub);line-height:1.7}
   details.stg.here{background:var(--accent-tint);border-radius:var(--r-s);border-bottom-color:transparent;margin:2px -8px;padding:0 8px;scroll-margin-top:72px}
+  /* 検定・ミニゲームなど、ステージの間に入る項目：淡い帯にして全幅で表示 */
+  details.stg.blk{background:var(--muted);border-radius:var(--r-s);border-bottom:none;margin:8px 0}
+  details.stg.blk > summary{padding:12px}
+  details.stg.blk > summary .no{display:none}
+  details.stg.blk .blkdesc{margin:0 12px 10px;background:var(--bg)}
+  details.stg.blk .lessons details.les summary{padding-left:12px}
+  details.stg.blk .lessons details.les p{margin-left:12px;margin-right:12px;background:var(--bg)}
+  details.stg.blk.here{background:var(--accent-tint);margin:8px 0;padding:0}
+  details.stg.blk .lessons details.les.here{background:var(--bg)}
   .curnote{margin-top:20px;font-size:12px;color:var(--faint)}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
@@ -1196,6 +1205,7 @@ function curLabel(h) {
   if (h.kind === 'lesson') return `${h.code}　${h.title}`;
   if (h.kind === 'stage') return `ステージ${h.stage}　${h.title}`;
   if (h.kind === 'review') return `${h.title}（復習用）`;
+  if (h.kind === 'sub') return `${h.title}（ステージ${h.after}のあと）`;   // ステージ23「ミニゲーム２：…」と見分けられるように
   return h.title;
 }
 
