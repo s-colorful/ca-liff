@@ -258,9 +258,19 @@ function withTimeout(promise, ms, label) {
 const API_TIMEOUT_MS = 60000;   // 書き込み（やり直さない）
 const READ_TRY_MS = 25000;      // 読み込み1回あたり
 let LAST_TIMING = '';           // 直近の通信の所要時間（管理者画面の下に表示。原因の切り分け用）
+const TIMINGS = [];             // 直近の通信の記録（管理者のときだけ画面の最下部に出す）
+function noteTiming(line) {
+  LAST_TIMING = line;
+  TIMINGS.unshift(line); TIMINGS.length = Math.min(TIMINGS.length, 6);
+  let el = document.getElementById('timings');
+  if (!el) { el = document.createElement('div'); el.id = 'timings'; el.style.cssText = 'padding:8px 16px 96px;font-size:11px;line-height:1.6;color:var(--sub)'; document.body.appendChild(el); }
+  el.hidden = !S.admin || S.preview;
+  el.textContent = '通信の記録（新しい順）\n' + TIMINGS.join('\n');
+  el.style.whiteSpace = 'pre-line';
+}
 const hms = d => d.toTimeString().slice(0, 8);   // Apps Script は起動直後に時間がかかることがあるため、長めに待つ
 // 読み込みだけの操作。通信の失敗時は1回だけ自動でやり直す（書き込みは二重登録を避けるため、やり直さない）
-const READ_ACTIONS = ['home', 'candidates', 'transferDates', 'availability', 'ledgerOf', 'adminOverview', 'adminStudents', 'previewHome', 'integrity', 'enrollOptions', 'planMove', 'planEnroll', 'planWithdraw'];
+const READ_ACTIONS = ['curriculumText', 'home', 'candidates', 'transferDates', 'availability', 'ledgerOf', 'adminOverview', 'adminStudents', 'previewHome', 'integrity', 'enrollOptions', 'planMove', 'planEnroll', 'planWithdraw'];
 async function api(action, params = {}) {
   if (MOCK) return mockApi(action, params);
   const body = { action, params, idToken };
@@ -270,15 +280,20 @@ async function api(action, params = {}) {
       .withFailureHandler(e => rej(e)).apiEntry(JSON.stringify(body)));
   }
   const isRead = READ_ACTIONS.includes(action);
-  // 読み込みは1回あたり25秒で見切ってやり直す（応答が戻ってこない回に当たっても、2回目で開けるように）
-  try {
-    return await callServer(action, body, isRead ? READ_TRY_MS : API_TIMEOUT_MS);
-  } catch (e) {
-    const transient = /^(TIMEOUT|BAD_RESPONSE|NETWORK):/.test(e.message);
-    if (!transient || !isRead) throw e;
-    console.warn('[api] retry', action, e.message);
-    await new Promise(r => setTimeout(r, 1000));
-    return callServer(action, body, READ_TRY_MS);
+  // 読み込みは最大3回まで自動でやり直す（Google側で応答を受け取れない回に当たっても開けるように）
+  const tries = isRead ? 3 : 1;
+  for (let i = 0; ; i++) {
+    try {
+      return await callServer(action, body, isRead ? READ_TRY_MS : API_TIMEOUT_MS);
+    } catch (e) {
+      const transient = /^(TIMEOUT|BAD_RESPONSE|NETWORK):/.test(e.message);
+      if (!transient) throw e;
+      // 書き込みは、サーバーでは処理が済んでいて結果だけ受け取れなかった可能性がある。やり直さず「確認してください」にする
+      if (!isRead) throw new Error(`UNCERTAIN:${e.message}`);
+      if (i >= tries - 1) throw e;
+      console.warn('[api] retry', action, i + 1, e.message);
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
   }
 }
 async function callServer(action, body, limitMs) {
@@ -300,7 +315,7 @@ async function callServer(action, body, limitMs) {
     text = await withTimeout(r.text(), limitMs, 'TIMEOUT');
   } catch (e) {
     if (ctrl) ctrl.abort();
-    LAST_TIMING = `${action} 送信 ${hms(sent)} → ${sec(Date.now() - t0)}で打ち切り`;
+    noteTiming(`${action} 送信 ${hms(sent)} → ${sec(Date.now() - t0)}で打ち切り`);
     throw new Error(e.message === 'TIMEOUT' ? `TIMEOUT:${action}（送信 ${hms(sent)}）` : `NETWORK:${action}:${e.message}`);
   } finally { clearInterval(tick); }
   let j;
@@ -309,7 +324,7 @@ async function callServer(action, body, limitMs) {
     const title = (text.match(/<title>([^<]*)<\/title>/i) || [])[1] || '';
     throw new Error(`BAD_RESPONSE:${action}:HTTP ${r.status}${title ? ' ' + title.trim().slice(0, 40) : ''}`);
   }
-  LAST_TIMING = `${action} 送信 ${hms(sent)} / 応答 ${sec(tHead)} / 受信完了 ${sec(Date.now() - t0)}` + (typeof j.ms === 'number' ? `（うちサーバー処理 ${sec(j.ms)}）` : '');
+  noteTiming(`${action} 送信 ${hms(sent)} / 応答 ${sec(tHead)} / 受信完了 ${sec(Date.now() - t0)}` + (typeof j.ms === 'number' ? `（うちサーバー処理 ${sec(j.ms)}）` : ''));
   console.log('[api]', LAST_TIMING);
   if (!j.ok) throw new Error(j.error);
   return j.result;
@@ -372,7 +387,8 @@ function messageFor(code) {
   // 通信まわりの失敗は「何が起きたか」と、教室に伝えるための記号を添える
   if (code.startsWith('TIMEOUT:')) return `サーバーの応答に時間がかかっています。少し待ってから、もう一度読み込んでください。（${code}）`;
   if (code.startsWith('NETWORK:')) return `サーバーにつながりませんでした。通信環境を確認して、もう一度読み込んでください。（${code}）`;
-  if (code.startsWith('BAD_RESPONSE:')) return `サーバーから想定外の応答がありました。教室までご連絡ください。（${code}）`;
+  if (code.startsWith('BAD_RESPONSE:')) return `通信が不安定で、サーバーの応答を受け取れませんでした。少し待ってから、もう一度読み込んでください。（${code}）`;
+  if (code.startsWith('UNCERTAIN:')) return '通信が不安定で、結果を受け取れませんでした。登録や取り消しが反映されているか、一覧で確認してください。';
   return ({
     NOT_REGISTERED: 'このLINEアカウントは教室に登録されていません。教室までご連絡ください。',
     busy: '混み合っています。少し待ってからもう一度お試しください。',
@@ -398,6 +414,7 @@ async function loadHome() {
     S.students = h.students; S.ledger = h.ledger; S.nextLessons = h.nextLessons || {}; S.openCount = h.openCount || 0;
     if (!S.cur || !S.students.some(s => s.id === S.cur)) S.cur = S.students[0]?.id || null;
     renderHome();
+    prefetchCandidates(S.cur);
   } catch (e) {
     $view.innerHTML = `<div class="empty">${esc(messageFor(e.message))}</div><p style="margin-top:16px"><button class="btn primary" id="retry">もう一度読み込む</button></p>`;
     document.getElementById('retry').onclick = loadHome;
@@ -467,11 +484,23 @@ function onTicketAction(act, id) {
 }
 
 // ---------- 欠席連絡 ----------
+// 欠席の候補日は、生徒の画面を開いた時点で裏で取りに行っておく（「欠席を連絡する」を押してからの待ち時間を減らすため）
+let CAND = null;   // { studentId, promise }
+function prefetchCandidates(studentId) {
+  if (MOCK || !studentId) return;
+  const promise = api('candidates', { studentId });
+  promise.catch(() => {});   // 失敗したときは、画面を開いたときに取り直す
+  CAND = { studentId, promise };
+}
 async function renderAbsence() {
   enter('absence', renderAbsence);
   busy('通常の授業日を確認しています…');
   let cands;
-  try { cands = await api('candidates', { studentId: S.cur }); } catch (e) { fail(e); return renderHome(); }
+  try {
+    const pre = CAND && CAND.studentId === S.cur ? CAND.promise : null;
+    CAND = null;   // 使うのは1回だけ（登録後は最新を取り直す）
+    cands = pre ? await pre.catch(() => api('candidates', { studentId: S.cur })) : await api('candidates', { studentId: S.cur });
+  } catch (e) { fail(e); return renderHome(); }
   const st = S.students.find(s => s.id === S.cur);
   const byDate = {};
   cands.forEach(c => (byDate[c.date] = byDate[c.date] || { label: c.label, isPast: c.isPast, items: [] }).items.push(c));
@@ -637,9 +666,9 @@ function renderAdminHome() {
     <div class="arow"><span class="n">代理で欠席を登録</span><button class="btn" data-adm="proxy">開く</button></div>
     <div class="arow"><span class="n">生徒の入会を登録</span><button class="btn" data-adm="enroll">開く</button></div>
     <div class="arow"><span class="n">保護者画面のプレビュー</span><button class="btn" data-adm="preview">開く</button></div>
+    <div class="arow"><span class="n">カリキュラム一覧（文言の編集）</span><button class="btn" data-adm="curriculum">開く</button></div>
     <div class="arow"><span class="n">カレンダーと時間割の色を同期</span><button class="btn" data-adm="sync">実行</button></div>
     <div class="arow"><span class="n">台帳と時間割の整合チェック</span><button class="btn" data-adm="integrity">実行</button></div>`;
-  if (LAST_TIMING) html += `<p style="margin-top:24px;font-size:12px;color:var(--sub)">通信の記録：${esc(LAST_TIMING)}</p>`;
   $view.innerHTML = html;
   $view.querySelectorAll('[data-adm]').forEach(b => b.onclick = () => {
     if (b.dataset.adm === 'student') return renderAdminStudent(b.dataset.id);
@@ -648,6 +677,7 @@ function renderAdminHome() {
     if (b.dataset.adm === 'preview') return renderAdminPicker(startPreview);
     if (b.dataset.adm === 'enroll') return renderEnroll();
     if (b.dataset.adm === 'sync') return doSync();
+    if (b.dataset.adm === 'curriculum') return renderCurriculum();
   });
 }
 
@@ -734,6 +764,7 @@ async function renderAdminStudent(studentId) {
   enter('adminStudent', () => renderAdminStudent(studentId)); busy('読み込み中…');
   const st = S.adminStudents.find(s => s.id === studentId) || { name: '' };
   try {
+    prefetchCandidates(studentId);   // 台帳と同時に、欠席の候補日も取りに行く
     const ledger = await api('ledgerOf', { studentId });
     S.students = [{ id: studentId, name: st.name }];   // 子画面の共通処理が参照する
     S.ledger = ledger; S.cur = studentId; S.openCount = ledger.filter(r => r.status === '未振替').length;
@@ -1035,6 +1066,84 @@ const CURRICULUM = [
 ];
 
 const lessonCode = (it, i) => it.single ? `${it.stage}` : `${it.stage}-${i + 1}`;
+
+// ---------- 文言の上書き（スプレッドシート「カリキュラム文言」で先生が編集） ----------
+// 1行 = [種類, キー, 名前, 学習内容, 説明]。名前・番号・並び順はアプリ側で固定し、説明などの文言だけを差し替える
+/** 今の内容を、編集用シートに書き出す形にする */
+function curTextRows() {
+  const rows = [];
+  CURRICULUM.forEach(c => c.cats.forEach(k => {
+    rows.push(['目標', k.name, '', '', k.goal || '']);
+    rows.push(['目安', k.name, '', '', k.pace || '']);
+    (k.words || []).forEach(w => rows.push(['用語', k.name, w[0], '', w[1]]));
+    k.items.forEach(it => {
+      if (it.stage) it.lessons.forEach((l, i) => rows.push(['授業', lessonCode(it, i), l[0], l[1] || '', l[2] || '']));
+      else if (it.block) {
+        rows.push(['まとまり', it.block, it.block, '', it.desc || '']);
+        (it.subs || []).forEach(sb => rows.push(['小項目', `${it.block}／${sb[0]}`, sb[0], '', sb[1] || '']));
+      } else if (it.review) rows.push(['復習用', it.review, it.review, '', it.desc || '']);
+    });
+  }));
+  return rows;
+}
+/** シートの文言を反映する。変わったところがあれば true */
+function applyCurText(rows) {
+  if (!Array.isArray(rows) || !rows.length) return false;
+  const T = v => String(v == null ? '' : v).trim();
+  const map = {}, words = {};
+  rows.forEach(r => {
+    const [kind, key, name, sheet, desc] = r.map(T);
+    if (!kind || !key) return;
+    if (kind === '用語') { if (name) (words[key] = words[key] || []).push([name, desc]); return; }   // 用語は行の追加・削除もできる
+    map[`${kind}|${key}`] = { sheet, desc };
+  });
+  let changed = false;
+  const set = (obj, prop, v) => { if (v && obj[prop] !== v) { obj[prop] = v; changed = true; } };   // 空欄はアプリの既定の文言のまま
+  CURRICULUM.forEach(c => c.cats.forEach(k => {
+    set(k, 'goal', (map['目標|' + k.name] || {}).desc);
+    set(k, 'pace', (map['目安|' + k.name] || {}).desc);
+    if (words[k.name] && JSON.stringify(words[k.name]) !== JSON.stringify(k.words)) { k.words = words[k.name]; changed = true; }
+    k.items.forEach(it => {
+      if (it.stage) it.lessons.forEach((l, i) => {
+        const o = map['授業|' + lessonCode(it, i)]; if (!o) return;
+        if (l[1] !== o.sheet) { l[1] = o.sheet; changed = true; }   // 学習内容は空欄にすると表示しない
+        if (o.desc && l[2] !== o.desc) { l[2] = o.desc; changed = true; }
+      });
+      else if (it.block) {
+        set(it, 'desc', (map['まとまり|' + it.block] || {}).desc);
+        (it.subs || []).forEach(sb => { const o = map[`小項目|${it.block}／${sb[0]}`]; if (o && o.desc && sb[1] !== o.desc) { sb[1] = o.desc; changed = true; } });
+      } else if (it.review) set(it, 'desc', (map['復習用|' + it.review] || {}).desc);
+    });
+  }));
+  if (changed) S._cur = null;   // 検索用の一覧を作り直す
+  return changed;
+}
+/** 文言を読み込む。前回の内容は端末に覚えておき、すぐに表示してから最新に差し替える */
+let CUR_TEXT = 'none';   // none / loading / done
+function loadCurText(onChange) {
+  if (CUR_TEXT !== 'none') return;
+  try { const saved = JSON.parse(localStorage.getItem('curText') || 'null'); if (saved) applyCurText(saved); } catch (e) { /* 端末に保存できない環境でも動く */ }
+  if (MOCK) { CUR_TEXT = 'done'; return; }
+  CUR_TEXT = 'loading';
+  api('curriculumText').then(rows => {
+    CUR_TEXT = 'done';
+    try { localStorage.setItem('curText', JSON.stringify(rows || [])); } catch (e) { /* 同上 */ }
+    if (applyCurText(rows)) onChange();
+  }).catch(() => { CUR_TEXT = 'none'; });   // 読めなかったときはアプリの既定の文言で表示し、次に開いたときに再挑戦
+}
+/** 管理者：編集用シートを作る（既にあるときは上書きの確認をする） */
+async function exportCurText(overwrite) {
+  busy('編集用シートを作っています…');
+  try {
+    const r = await api('curriculumExport', { rows: curTextRows(), overwrite: !!overwrite });
+    if (r.code === 'EXISTS') {
+      renderCurriculum();
+      return confirmSheet('編集用シートは既にあります', '今アプリに表示されている内容でシートを作り直します。シートで編集済みの文言は、反映済みであればそのまま残ります。', '作り直す', () => exportCurText(true));
+    }
+    toast(`スプレッドシートに「${r.sheet}」を作りました（${r.rows}行）`);
+  } catch (e) { fail(e); }
+  renderCurriculum();
+}
 /** カリキュラムを、探しやすい一覧にする（ステージの回・検定などのまとまり・その中の小項目・復習用） */
 function curItems() {
   if (S._cur) return S._cur;
@@ -1093,13 +1202,17 @@ function curLabel(h) {
 /** カリキュラム一覧 */
 function renderCurriculum() {
   enter('curriculum', renderCurriculum);
+  loadCurText(() => { if (CURRENT && CURRENT.name === 'curriculum') { restoring = true; try { renderCurriculum(); } finally { restoring = false; } } });
   const { stages } = curItems();
   const sel = S.curSel || null;
   const isStageKind = sel && (sel.kind === 'lesson' || sel.kind === 'stage');
   const selStage = sel ? (isStageKind ? sel.stage : sel.after) : 0;
   const chapIdx = sel ? CURRICULUM.findIndex(c => c.chapter === sel.chapter) : (S.curChap || 0);
   S.curChap = chapIdx;
-  let html = `<h2><span>授業報告の内容で探す</span></h2>
+  let html = S.admin && !S.preview
+    ? `<div class="adm">保護者に表示されるカリキュラム一覧です。説明などの文言は、スプレッドシートの「カリキュラム文言」シートの「学習内容」「説明」の列で編集できます。保存すると、次に一覧を開いたときに反映されます。名前・番号・並び順はアプリ側で固定しています。<br><button class="btn" id="curExport" style="margin-top:10px">編集用シートを作る</button></div>`
+    : '';
+  html += `<h2><span>授業報告の内容で探す</span></h2>
     <div class="curfind"><input id="curQ" type="search" value="${esc(S.curQ || '')}" placeholder="例：8-3、8、検定、ドリル" enterkeyhint="search" autocomplete="off"><button class="btn primary" id="curGo">探す</button></div>`;
   if (S.curHits && S.curHits.length > 1) {
     html += `<div class="hits"><p>${S.curHits.length}件見つかりました。授業報告にあったものを選んでください。</p>${S.curHits.map((h, i) => `<button class="hit" data-i="${i}">${esc(curLabel(h))}</button>`).join('')}</div>`;
@@ -1175,6 +1288,7 @@ function renderCurriculum() {
     S.curSel = null; S.curHits = q.trim() ? hits : null; rerender();
   };
   document.getElementById('curGo').onclick = go;
+  const ex = document.getElementById('curExport'); if (ex) ex.onclick = () => exportCurText(false);
   document.getElementById('curQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
   $view.querySelectorAll('.hit').forEach(b => b.onclick = () => choose(S.curHits[+b.dataset.i]));
   $view.querySelectorAll('.chap').forEach(b => b.onclick = () => { S.curChap = +b.dataset.i; if (S.curSel && S.curSel.chapter !== CURRICULUM[S.curChap].chapter) S.curSel = null; rerender(); });
@@ -1303,7 +1417,16 @@ function confirmSheet(title, text, okLabel, onOk, opts = {}) {
   el.querySelector('#ok').onclick = async () => {
     if (!onOk) return;
     const b = el.querySelector('#ok'); b.disabled = true; b.textContent = '送信中…';
-    try { await onOk(); close(); } catch (e) { close(); fail(e); }
+    try { await onOk(); close(); } catch (e) {
+      close();
+      if (!String(e.message).startsWith('UNCERTAIN:')) return fail(e);
+      // 結果が分からないときは最新の状態を読み込み直し、画面の上に確認のお願いを出す
+      console.error(e);
+      try { await reload(); } catch (e2) { /* 読み込みに失敗した場合はそちらのメッセージが出る */ }
+      const note = document.createElement('div'); note.className = 'adm';
+      note.textContent = messageFor(e.message);
+      $view.prepend(note);
+    }
   };
 }
 
@@ -1402,6 +1525,7 @@ function mockApiBase(action, p) {
 
 function mockAdmin(action, p) {
   const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 300));
+  if (action === 'curriculumExport') return wait({ code: 'OK', sheet: 'カリキュラム文言', rows: p.rows.length });
   const st = [
     { id: 'S001', name: '山田太郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
     { id: 'S002', name: '山田次郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
