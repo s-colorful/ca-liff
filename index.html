@@ -781,7 +781,9 @@ async function renderAdminStudent(studentId) {
   try {
     prefetchCandidates(studentId);   // 台帳と同時に、欠席の候補日も取りに行く
     const ledger = await api('ledgerOf', { studentId });
-    S.students = [{ id: studentId, name: st.name }];   // 子画面の共通処理が参照する
+    // 子画面の共通処理が参照する。同じ家庭の兄弟も入れておき、振替画面で「出席する人」を選べるようにする
+    const fam = st.familyId ? S.adminStudents.filter(x => x.familyId === st.familyId && x.id !== studentId) : [];
+    S.students = [{ id: studentId, name: st.name }, ...fam.map(x => ({ id: x.id, name: x.name }))];
     S.ledger = ledger; S.cur = studentId; S.openCount = ledger.filter(r => r.status === '未振替').length;
     const open = ledger.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
     const done = ledger.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
@@ -1553,8 +1555,8 @@ function mockAdmin(action, p) {
   const wait = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 300));
   if (action === 'curriculumExport') return wait({ code: 'OK', sheet: 'カリキュラム文言', rows: p.rows.length });
   const st = [
-    { id: 'S001', name: '山田太郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
-    { id: 'S002', name: '山田次郎', room: 'A教室', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S001', name: '山田太郎', room: 'A教室', familyId: 'F001', slots: [{ dow: '土', time: '10:30' }] },
+    { id: 'S002', name: '山田次郎', room: 'A教室', familyId: 'F001', slots: [{ dow: '土', time: '10:30' }] },
     { id: 'S010', name: '鈴木一郎', room: 'B教室', slots: [{ dow: '火', time: '16:00' }, { dow: '火', time: '17:00' }] },
     { id: 'S011', name: '佐藤花子', room: 'A教室', slots: [{ dow: '土', time: '9:30' }] },
     { id: 'S012', name: '高橋健', room: 'A教室', slots: [{ dow: '土', time: '13:30' }] },
