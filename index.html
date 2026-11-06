@@ -98,6 +98,9 @@
   .row.past .d{color:var(--sub);font-weight:500}
   .row .note{margin-left:auto;font-size:12px;color:var(--sub)}
   .row.disabled{opacity:.45;cursor:default}
+  .olderbtn{display:block;width:100%;margin:4px 0 6px;padding:11px 0;border:1px dashed var(--faint);border-radius:var(--r-s);background:none;font-size:14px;color:var(--sub);cursor:pointer}
+  .olderbtn:hover{background:var(--panel)}
+  .monthhead{margin:14px 0 0;font-size:13px;font-weight:700;color:var(--sub)}
 
   label.f{display:block;margin:24px 0 8px;font-size:13px;font-weight:700;color:var(--sub)}
   textarea,input[type=date],select,.search{width:100%;border:1px solid var(--line);border-radius:var(--r-s);padding:11px 12px;background:var(--bg);font-size:15px}
@@ -123,7 +126,7 @@
   .slot{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--bg);text-align:left;cursor:pointer}
   .slot .tm{font-size:20px;font-weight:700;line-height:1.2}
   .slot .st{margin-top:4px;font-size:12px;color:var(--sub)}
-  .slot.gray .st{color:var(--notice)}
+  .slot.gray .st,.slot.memo .st{color:var(--notice)}
   .slot.ng{background:var(--muted);border-color:var(--muted);color:var(--faint);cursor:default}
   .slot.ng .st{color:var(--faint)}
   .slot[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -445,7 +448,7 @@ function renderHome() {
   const done = mine.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
 
   let html = '';
-  if (S.preview) html += `<div class="adm">プレビュー（閲覧のみ）：この家庭の保護者に見えている画面です。操作しても登録されません。左上の「戻る」で管理者メニューに戻ります。</div>`;
+  if (S.preview) html += `<div class="adm">プレビュー（閲覧のみ）</div>`;
   if (S.students.length > 1) {
     html += `<div class="tabs" role="tablist">${S.students.map(s => `<button class="tab" role="tab" aria-selected="${s.id === S.cur}" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>`;
   }
@@ -509,7 +512,7 @@ function prefetchCandidates(studentId) {
 }
 async function renderAbsence() {
   enter('absence', renderAbsence);
-  busy('通常の授業日を確認しています…');
+  busy('読み込み中…');
   let cands;
   try {
     const pre = CAND && CAND.studentId === S.cur ? CAND.promise : null;
@@ -518,11 +521,10 @@ async function renderAbsence() {
   } catch (e) { fail(e); return renderHome(); }
   const st = S.students.find(s => s.id === S.cur);
   const byDate = {};
-  cands.forEach(c => (byDate[c.date] = byDate[c.date] || { label: c.label, isPast: c.isPast, items: [] }).items.push(c));
+  // recent が無い（古いサーバー）ときは、すべて最初から表示する
+  cands.forEach(c => (byDate[c.date] = byDate[c.date] || { label: c.label, isPast: c.isPast, recent: c.recent !== false, items: [] }).items.push(c));
   const dates = Object.keys(byDate).sort();
-
-  let html = `<h2>${esc(st.name)}さんの欠席する日</h2><p class="lead">通常の授業日から選んでください。複数選べます。</p>`;
-  html += dates.map(d => {
+  const rowsHtml = list => list.map(d => {
     const g = byDate[d];
     return g.items.map((c, i) => {
       const dis = c.alreadyRequested;
@@ -533,11 +535,32 @@ async function renderAbsence() {
       </label>`;
     }).join('');
   }).join('');
+  // 直近より前の日付は月ごとにまとめて隠し、「さらに前を表示」を押すたびに1か月ずつ開く
+  const olderByMonth = {};
+  dates.filter(d => !byDate[d].recent).forEach(d => (olderByMonth[d.slice(0, 7)] = olderByMonth[d.slice(0, 7)] || []).push(d));
+  const olderMonths = Object.keys(olderByMonth).sort();
+  const ymJa = ym => `${+ym.slice(0, 4)}年${+ym.slice(5, 7)}月`;
+
+  let html = `<h2>${esc(st.name)}さんの欠席する日</h2>`;
+  if (olderMonths.length) html += `<button class="olderbtn" id="older" type="button"></button>`;
+  html += olderMonths.map(ym => `<div class="older" data-ym="${ym}" hidden><div class="monthhead">${ymJa(ym)}</div>${rowsHtml(olderByMonth[ym])}</div>`).join('');
+  html += rowsHtml(dates.filter(d => byDate[d].recent));
   if (!dates.length) html += `<div class="empty">選べる授業日がありません。教室までご連絡ください。</div>`;
   html += `<label class="f" for="notes">教室への伝言（任意）</label><textarea id="notes" placeholder="例：発熱のため。振替は来週以降で相談したいです"></textarea>`;
   html += `<div class="dock"><button class="btn primary" id="send" disabled>欠席を連絡する</button></div>`;
   $view.innerHTML = html;
 
+  const olderBtn = document.getElementById('older');
+  if (olderBtn) {
+    const hiddenOlder = () => [...$view.querySelectorAll('.older[hidden]')];
+    const label = () => {
+      const h = hiddenOlder();
+      if (!h.length) { olderBtn.remove(); return; }
+      olderBtn.textContent = `さらに前の日付を表示（${ymJa(h[h.length - 1].dataset.ym)}）`;
+    };
+    olderBtn.onclick = () => { const h = hiddenOlder(); if (h.length) h[h.length - 1].hidden = false; label(); };
+    label();
+  }
   const send = document.getElementById('send');
   const picked = () => [...$view.querySelectorAll('input[type=checkbox]:checked')].map(c => ({ date: c.dataset.date, time: c.dataset.time }));
   $view.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => {
@@ -564,18 +587,25 @@ async function renderAbsence() {
 // ---------- 振替 ----------
 async function renderTransfer(r) {
   enter('transfer', () => renderTransfer(r));
-  busy('振替できる日を確認しています…');
+  busy('読み込み中…');
   let dates;
   try { dates = await api('transferDates'); } catch (e) { fail(e); return renderHome(); }
   const st = S.students.find(s => s.id === r.studentId);
   const siblings = S.students.filter(s => s.id !== r.studentId);
   let html = `<h2>${esc(r.dateLabel)} ${esc(r.time)} 欠席の振替先</h2>
-    <p class="lead">${r.status === '振替済' ? `現在は ${esc(r.transferDateLabel)} ${esc(r.transferTime)} です。新しい日時を選ぶと差し替わります。` : '日を選ぶと、空きのある時限が表示されます。'}</p>`;
+    ${r.status === '振替済' ? `<p class="lead">現在：${esc(r.transferDateLabel)} ${esc(r.transferTime)}</p>` : ''}`;
   if (siblings.length) {
     html += `<label class="f" for="attend">出席する生徒</label><select id="attend">
       <option value="${esc(r.studentId)}">${esc(st.name)}（本人）</option>${siblings.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select>`;
   }
-  html += `<label class="f">振替する日</label><p class="legend">薄い日は休校日・定休日・受付期間外です。</p>`;
+  // 過去の月（記入漏れの後追い用）があれば、年月のプルダウンで切り替える。最初は「今月以降」
+  const todayIso = dates.today || isoLocal(new Date());
+  const thisYm = todayIso.slice(0, 7);
+  const pastYms = monthsBetween(dates.start, todayIso).filter(ym => ym < thisYm).reverse();
+  html += `<label class="f" ${pastYms.length ? 'for="calm"' : ''}>振替する日</label>`;
+  if (pastYms.length) {
+    html += `<select id="calm" aria-label="表示する月" style="margin-bottom:10px"><option value="">今月以降</option>${pastYms.map(ym => `<option value="${ym}">${+ym.slice(0, 4)}年${+ym.slice(5, 7)}月</option>`).join('')}</select>`;
+  }
   html += dates.dates.length ? calendarHtml(dates) : `<div class="empty">いま選べる日がありません。教室までご連絡ください。</div>`;
   html += `<div id="slots" class="slotarea"></div>`;
   html += `<div class="dock"><button class="btn primary" id="book" disabled>この日時に振り替える</button></div>`;
@@ -590,16 +620,17 @@ async function renderTransfer(r) {
   }
   async function loadSlots(date) {
     chosen = null; book.disabled = true; pickedDate = date;
-    $slots.innerHTML = `<div class="loading">空きを確認しています…</div>`;
+    $slots.innerHTML = `<div class="loading">読み込み中…</div>`;
     scrollToSlots();
     try {
       const attendId = document.getElementById('attend')?.value || r.studentId;
       const av = await api('availability', { studentId: attendId, date });
       if (av.code !== 'OK') { $slots.innerHTML = `<div class="empty">${esc(messageFor(av.code))}</div>`; return; }
       if (!av.slots.length) { $slots.innerHTML = `<div class="empty">この日は授業がありません</div>`; return; }
+      // 過去の日は、満員でも「メモで記録」として選べる（時間割のセルにメモを付けて記録する）
       $slots.innerHTML = `<h2>${esc(fmtJa(date))} の時限</h2><div class="slots">${av.slots.map(s => {
-        const cls = s.alreadyThere ? 'ng' : s.freeWhite ? 'ok' : s.freeGray ? 'gray' : 'ng';
-        const txt = s.alreadyThere ? 'この時限に登録済み' : s.freeWhite ? `空き ${s.freeWhite}` : s.freeGray ? '臨時枠のみ' : '満員';
+        const cls = s.alreadyThere ? 'ng' : s.freeWhite ? 'ok' : s.freeGray ? 'gray' : av.past ? 'memo' : 'ng';
+        const txt = s.alreadyThere ? 'この時限に登録済み' : s.freeWhite ? `空き ${s.freeWhite}` : s.freeGray ? '臨時枠のみ' : av.past ? '満員（メモ）' : '満員';
         return `<button class="slot ${cls}" data-time="${esc(s.time)}" ${cls === 'ng' ? 'disabled' : ''} aria-pressed="false"><div class="tm">${esc(s.time)}</div><div class="st">${txt}</div></button>`;
       }).join('')}</div>`;
       scrollToSlots();
@@ -607,11 +638,12 @@ async function renderTransfer(r) {
         $slots.querySelectorAll('.slot').forEach(o => o.setAttribute('aria-pressed', 'false'));
         b.setAttribute('aria-pressed', 'true');
         const sl = av.slots.find(x => x.time === b.dataset.time) || {};
-        chosen = { date, time: b.dataset.time, gray: b.classList.contains('gray'), free: (sl.freeWhite || 0) + (sl.freeGray || 0) };
+        chosen = { date, time: b.dataset.time, gray: b.classList.contains('gray'), memo: b.classList.contains('memo'), past: !!av.past, free: (sl.freeWhite || 0) + (sl.freeGray || 0) };
         book.disabled = false;
-        // 兄弟がいて、未振替が2件以上あり、残り1枠のときは注意を出す
+        book.textContent = chosen.past ? 'この日時の振替を記録する' : 'この日時に振り替える';
+        // 兄弟がいて、未振替が2件以上あり、残り1枠のときは注意を出す（過去の日の記録では出さない）
         const old = $slots.querySelector('.warn'); if (old) old.remove();
-        if ((!S.admin || S.preview) && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) {
+        if ((!S.admin || S.preview) && !chosen.past && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) {
           const w = document.createElement('div'); w.className = 'warn';
           w.textContent = 'この時間の空きは残り1枠です。お一人分のみお取りできます。ごきょうだい2名分をご希望の場合は、別の時間をお選びいただくか教室にご相談ください。';
           $slots.appendChild(w);
@@ -624,18 +656,31 @@ async function renderTransfer(r) {
     $view.querySelectorAll('.cal .day').forEach(o => o.setAttribute('aria-pressed', 'false'));
     c.setAttribute('aria-pressed', 'true'); loadSlots(c.dataset.date);
   });
+  /** 年月プルダウン：空＝今月以降をすべて、年月＝その月だけを表示 */
+  const calm = document.getElementById('calm');
+  const showMonths = () => {
+    const ym = calm ? calm.value : '';
+    $view.querySelectorAll('.cal[data-ym]').forEach(c => { c.hidden = ym ? c.dataset.ym !== ym : c.dataset.ym < thisYm; });
+  };
+  if (calm) calm.onchange = () => {
+    showMonths();
+    chosen = null; pickedDate = null; book.disabled = true; $slots.innerHTML = '';
+    $view.querySelectorAll('.cal .day').forEach(o => { if (!o.disabled) o.setAttribute('aria-pressed', 'false'); });
+  };
+  showMonths();
   document.getElementById('attend')?.addEventListener('change', () => { if (pickedDate) loadSlots(pickedDate); });
 
   book.onclick = () => {
     const attendId = document.getElementById('attend')?.value || r.studentId;
     const who = S.students.find(s => s.id === attendId);
     const label = fmtJa(chosen.date) + ' ' + chosen.time;
-    let extra = (chosen.gray ? '通常の枠に空きがないため臨時枠に入ります。' : '') + (attendId !== r.studentId ? `${who.name}さんが出席します。` : '');
-    if ((!S.admin || S.preview) && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) extra += '\nこの時間の空きは残り1枠です。お一人分のみのお取り置きとなります。';
-    confirmSheet('この日時に振り替えます', `${label}${extra ? '\n' + extra : ''}`, '振り替える', async () => {
+    let extra = (chosen.gray ? '臨時枠に入ります。' : '')
+      + (attendId !== r.studentId ? `${who.name}さんが出席します。` : '');
+    if ((!S.admin || S.preview) && !chosen.past && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) extra += '\nこの時間の空きは残り1枠です。お一人分のみのお取り置きとなります。';
+    confirmSheet(chosen.past ? '振替を記録します' : 'この日時に振り替えます', `${label}${extra ? '\n' + extra : ''}`, chosen.past ? '記録する' : '振り替える', async () => {
       const res = await api('transfer', { absenceId: r.id, date: chosen.date, time: chosen.time, attendStudentId: attendId });
       if (res.code !== 'OK') throw new Error(res.ttCode || res.code);
-      toast(`${label} に振り替えました`); await reload();
+      toast(chosen.past ? '振替を記録しました' : '振り替えました'); await reload();
     });
   };
 }
@@ -655,9 +700,17 @@ function calendarHtml({ start, end, dates }) {
       const ok = allowed.has(iso);
       cells += `<button class="day ${iso === todayIso ? 'today' : ''}" data-date="${iso}" ${ok ? 'aria-pressed="false"' : 'disabled'}>${d}</button>`;
     }
-    html += `<div class="cal"><div class="m">${y}年${m}月</div><div class="g">${cells}</div></div>`;
+    html += `<div class="cal" data-ym="${y}-${String(m).padStart(2, '0')}"><div class="m">${y}年${m}月</div><div class="g">${cells}</div></div>`;
   }
   return html;
+}
+/** 2つの日付（yyyy-mm-dd）の間の年月を "yyyy-mm" の配列で返す（両端の月を含む） */
+function monthsBetween(startIso, endIso) {
+  const out = [];
+  let [y, m] = startIso.split('-').map(Number);
+  const [ey, em] = endIso.split('-').map(Number);
+  while (y < ey || (y === ey && m <= em)) { out.push(`${y}-${String(m).padStart(2, '0')}`); m === 12 ? (y++, m = 1) : m++; }
+  return out;
 }
 function isoLocal(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 function fmtJa(iso) { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1, d); return `${m}/${d}(${'日月火水木金土'[dt.getDay()]})`; }
@@ -668,7 +721,7 @@ function renderAdminHome() {
   setRoot('adminHome', renderAdminHome);
   document.getElementById('who').textContent = `${S.admin.name}（管理者）`;
   const ov = S.admin.overview;
-  let html = `<div class="adm">管理者モードです。全生徒の欠席・振替を確認し、代理で登録できます。<br>ここでの登録・変更・取消は<b>保護者にLINE通知は送られません</b>が、保護者の画面にはそのまま反映されます。</div>`;
+  let html = `<div class="adm">管理者モード（保護者へのLINE通知は送られません）</div>`;
   html += `<h2><span>振替待ち</span><span>${ov.openTotal}件・${ov.summary.length}名</span></h2>`;
   html += ov.summary.length
     ? ov.summary.map(x => `<div class="arow"><span class="n">${esc(x.name)}</span><span class="c">${x.count}件・最古 ${esc(fmtJa(x.oldest))}</span><button class="btn" data-adm="student" data-id="${esc(x.studentId)}">開く</button></div>`).join('')
@@ -703,7 +756,7 @@ async function doSync() {
 
 /** 保護者画面のプレビュー（閲覧のみ）。選んだ生徒の家庭として表示する */
 async function startPreview(studentId) {
-  busy('保護者画面を準備しています…');
+  busy('読み込み中…');
   try {
     const h = await api('previewHome', { studentId });
     S.preview = true; S.previewStudent = studentId;
@@ -718,7 +771,7 @@ function exitPreview() {
 }
 
 async function renderIntegrity() {
-  enter('integrity', renderIntegrity); busy('台帳と時間割を照合しています…');
+  enter('integrity', renderIntegrity); busy('読み込み中…');
   try {
     const issues = await api('integrity');
     let html = `<h2>整合チェック</h2>`;
@@ -787,7 +840,7 @@ async function renderAdminStudent(studentId) {
     S.ledger = ledger; S.cur = studentId; S.openCount = ledger.filter(r => r.status === '未振替').length;
     const open = ledger.filter(r => r.status === '未振替').sort((a, b) => a.date.localeCompare(b.date));
     const done = ledger.filter(r => r.status === '振替済').sort((a, b) => b.transferDate.localeCompare(a.transferDate));
-    let html = `<div class="adm">${esc(st.name)}さんの台帳（管理者）<br>操作しても保護者へのLINE通知は送られません。</div>`;
+    let html = `<div class="adm">${esc(st.name)}さんの台帳（保護者へのLINE通知は送られません）</div>`;
     const slotText = (st.slots || []).map(x => `${x.dow} ${x.time}${x.from ? `（${x.from}から）` : ''}`).join('、') || '未登録';
     html += `<div class="arow"><span class="n">通常のコマ</span><span class="go">${esc(slotText)}</span>${(st.slots || []).length ? `<button class="btn" id="goMove">移動</button>` : ''}</div>`;
     html += `<div class="arow"><span class="n">${st.leaving ? `${esc(st.leaving)}で退会予定` : '退会の手続き'}</span>${st.leaving ? '' : `<button class="btn" id="goLeave">開く</button>`}</div>`;
@@ -809,7 +862,7 @@ function renderMoveSlot(studentId) {
   const st = S.adminStudents.find(s => s.id === studentId) || { name: '', slots: [] };
   const opts = (S.admin && S.admin.slotOptions) || {};
   const today = isoLocal(new Date());
-  let html = `<div class="adm">${esc(st.name)}さんの通常のコマを移動します。先に「確認」で書き換わる箇所と問題点を確かめ、問題がなければ実行できます。</div>`;
+  let html = `<div class="adm">${esc(st.name)}さんのコマ移動</div>`;
   html += `<label class="f" for="mvFrom">移動するコマ</label><select id="mvFrom">${(st.slots || []).map(x => `<option value="${esc(x.dow)}|${esc(x.time)}">${esc(x.dow)} ${esc(x.time)}</option>`).join('')}</select>`;
   html += `<label class="f" for="mvDow">移動先の曜日</label><select id="mvDow">${Object.keys(opts).map(d => `<option>${esc(d)}</option>`).join('')}</select>`;
   html += `<label class="f" for="mvTime">移動先の時刻</label><select id="mvTime"></select>`;
@@ -846,7 +899,6 @@ function renderMoveSlot(studentId) {
     h += p.blockers.map(b => `<div class="issue" style="border-left-color:var(--danger);background:#fbeceb"><b>止める理由</b>：${esc(b)}</div>`).join('');
     h += p.warnings.map(w => `<div class="issue"><b>注意</b>：${esc(w)}</div>`).join('');
     if (p.ok && p.newWeeks.length) h += `<p class="lead" style="margin-top:10px">移動先に書き込む授業：${esc(p.newWeeks.join('、'))}</p>`;
-    if (p.ok) h += `<p class="lead">実行すると、移動元と移動先の列を上に詰めて並べ直します。ほかの生徒の欠席・振替の記録も、位置に合わせて自動で更新されます。</p>`;
     $plan.innerHTML = h;
     planned = p.ok ? p : null;
     $go.disabled = !p.ok;
@@ -1150,7 +1202,7 @@ function loadCurText(onChange) {
 }
 /** 管理者：編集用シートを作る（既にあるときは上書きの確認をする） */
 async function exportCurText(overwrite) {
-  busy('編集用シートを作っています…');
+  busy('読み込み中…');
   try {
     const r = await api('curriculumExport', { rows: curTextRows(), overwrite: !!overwrite });
     if (r.code === 'EXISTS') {
@@ -1234,7 +1286,7 @@ function renderCurriculum() {
   const chapIdx = sel ? CURRICULUM.findIndex(c => c.chapter === sel.chapter) : (S.curChap || 0);
   S.curChap = chapIdx;
   let html = S.admin && !S.preview
-    ? `<div class="adm">保護者に表示されるカリキュラム一覧です。説明などの文言は、スプレッドシートの「カリキュラム文言」シートの「学習内容」「説明」の列で編集できます。保存すると、次に一覧を開いたときに反映されます。名前・番号・並び順はアプリ側で固定しています。<br><button class="btn" id="curExport" style="margin-top:10px">編集用シートを作る</button></div>`
+    ? `<div class="adm">文言はスプレッドシートの「カリキュラム文言」シートで編集できます。<br><button class="btn" id="curExport" style="margin-top:10px">編集用シートを作る</button></div>`
     : '';
   html += `<h2><span>授業報告の内容で探す</span></h2>
     <div class="curfind"><input id="curQ" type="search" value="${esc(S.curQ || '')}" placeholder="例：8-3、8、検定、ドリル" enterkeyhint="search" autocomplete="off"><button class="btn primary" id="curGo">探す</button></div>`;
@@ -1340,7 +1392,7 @@ async function renderEnroll() {
   const opts = (S.admin && S.admin.slotOptions) || {};
   const today = isoLocal(new Date());
   const sibs = S.adminStudents.filter(s => s.familyId).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  let html = `<div class="adm">新しく入会する生徒を登録します。時間割（原本）と、作成済みの月次シートの開始日以降に名前を書き込みます。</div>
+  let html = `<div class="adm">入会の登録</div>
     <label class="f" for="enName">氏名</label><input class="search" id="enName" placeholder="例：新井花" autocomplete="off">
     <label class="f" for="enDisp">時間割での表記</label><input class="search" id="enDisp" placeholder="空欄なら氏名と同じ。CA・EGなどの記号も時間割どおりに" autocomplete="off">
     <label class="f" for="enRoom">教室</label><input class="search" id="enRoom" list="enRooms" autocomplete="off"><datalist id="enRooms">${(opt.rooms || []).map(r => `<option value="${esc(r)}">`).join('')}</datalist>
@@ -1403,7 +1455,7 @@ function renderWithdraw(studentId) {
   enter('withdraw', () => renderWithdraw(studentId));
   const st = S.adminStudents.find(s => s.id === studentId) || { name: '' };
   const today = isoLocal(new Date());
-  $view.innerHTML = `<div class="adm">${esc(st.name)}さんの退会の手続きをします。最終授業日の翌日以降の時間割と原本から名前を外し、列を詰めます。最終日を過ぎると、保護者の画面と先生の一覧から自動で外れます。</div>
+  $view.innerHTML = `<div class="adm">${esc(st.name)}さんの退会</div>
     <label class="f" for="wdLast">最終授業日（この日の授業までは出席）</label><input type="date" id="wdLast" value="${today}">
     <div id="wdPlan" class="slotarea" style="min-height:0"></div>
     <div class="dock"><button class="btn primary" id="wdGo">確認する</button></div>`;
@@ -1512,27 +1564,33 @@ function mockApiBase(action, p) {
     }
     case 'candidates': {
       const out = []; const t = new Date(); t.setHours(0, 0, 0, 0);
-      for (let i = -35; i <= 56; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (d.getDay() !== 6) continue;
+      const from = new Date(t.getFullYear(), t.getMonth() - 12, 1);
+      for (let d = new Date(from); d <= new Date(t.getTime() + 56 * 86400000); d.setDate(d.getDate() + 1)) { if (d.getDay() !== 6) continue;
         const iso = isoLocal(d);
         out.push({ date: iso, label: fmtJa(iso), time: '10:30', isPast: d < t, alreadyRequested: M.ledger.some(r => r.studentId === p.studentId && r.status !== '取消' && r.date === iso) }); }
+      const recentDays = out.filter(c => c.isPast).map(c => c.date).slice(-5);
+      out.forEach(c => { c.recent = !c.isPast || recentDays.includes(c.date); });
       return wait(out);
     }
     case 'transferDates': {
       const t = new Date(); t.setHours(0, 0, 0, 0);
+      const start = new Date(t.getFullYear(), t.getMonth() - 12, 1);
       const end = new Date(t.getFullYear(), t.getMonth() + 4, 0);
       const dates = [];
-      for (let d = new Date(t); d <= end; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         if (d.getDay() === 1) continue;
         const gap = Math.round((d - t) / 86400000); if (gap === 9 || gap === 10 || (gap >= 40 && gap <= 46)) continue; /* 休校日の例 */
         dates.push(isoLocal(d));
       }
-      return wait({ start: isoLocal(t), end: isoLocal(end), dates });
+      return wait({ start: isoLocal(start), end: isoLocal(end), today: isoLocal(t), dates });
     }
     case 'availability': {
       const d = new Date(p.date + 'T00:00'); const dow = d.getDay();
       const table = { 2: ['16:00', '17:00'], 3: ['16:30', '17:30'], 4: ['16:30', '17:30'], 5: ['17:30'], 6: ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], 0: ['9:30', '10:30', '11:30'] };
-      const slots = (table[dow] || []).map((time, i) => ({ time, label: time, freeWhite: [2, 0, 1, 3, 0, 4, 2][i] || 0, freeGray: i === 1 ? 2 : 0, alreadyThere: dow === 6 && time === '10:30' }));
-      return wait({ code: slots.length ? 'OK' : 'NO_DATE', slots });
+      const past = d < new Date(new Date().setHours(0, 0, 0, 0));
+      // 過去の日は満員の時限が多い想定（欠席者の名前が赤で残っているため）
+      const slots = (table[dow] || []).map((time, i) => ({ time, label: time, freeWhite: past ? (i === 2 ? 1 : 0) : [2, 0, 1, 3, 0, 4, 2][i] || 0, freeGray: !past && i === 1 ? 2 : 0, alreadyThere: dow === 6 && time === '10:30' }));
+      return wait({ code: slots.length ? 'OK' : 'NO_DATE', slots, past });
     }
     case 'absence': {
       if (M.ledger.some(r => r.studentId === p.studentId && r.date === p.date && r.time === p.time && r.status !== '取消')) return wait({ code: 'DUPLICATE' });
@@ -1543,7 +1601,7 @@ function mockApiBase(action, p) {
     case 'transfer': {
       const r = M.ledger.find(x => x.id === p.absenceId); const a = M.students.find(x => x.id === (p.attendStudentId || r.studentId));
       Object.assign(r, { status: '振替済', attendStudentId: a.id, attendStudentName: a.name, transferDate: p.date, transferDateLabel: fmtJa(p.date), transferTime: p.time });
-      return wait({ code: 'OK', ttCode: 'OK' });
+      return wait({ code: 'OK', ttCode: p.date < isoLocal(new Date()) && p.time !== '11:30' ? 'OK_NOTE' : 'OK' });
     }
     case 'cancelTransfer': { const r = M.ledger.find(x => x.id === p.absenceId); Object.assign(r, { status: '未振替', attendStudentId: '', transferDate: '', transferDateLabel: '', transferTime: '' }); return wait({ code: 'OK' }); }
     case 'cancelAbsence': { const r = M.ledger.find(x => x.id === p.absenceId); r.status = '取消'; return wait({ code: 'OK' }); }
