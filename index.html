@@ -157,7 +157,7 @@
   .slot{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--surface);text-align:left;cursor:pointer}
   .slot .tm{font-size:20px;font-weight:700;line-height:1.2}
   .slot .st{margin-top:4px;font-size:12px;color:var(--sub)}
-  .slot.gray .st,.slot.memo .st{color:var(--notice)}
+  .slot.memo .st{color:var(--notice)}
   .slot.ng{background:var(--muted);border-color:transparent;color:var(--faint);cursor:default}
   .slot.ng .st{color:var(--faint)}
   .slot[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -624,8 +624,9 @@ async function renderTransfer(r) {
       if (!av.slots.length) { $slots.innerHTML = `<div class="empty">この日は授業がありません</div>`; return; }
       // 過去の日は、満員でも「メモで記録」として選べる（時間割のセルにメモを付けて記録する）
       $slots.innerHTML = `<h2>${esc(fmtJa(date))} の時限</h2><div class="slots">${av.slots.map(s => {
-        const cls = s.alreadyThere ? 'ng' : s.freeWhite ? 'ok' : s.freeGray ? 'gray' : av.past ? 'memo' : 'ng';
-        const txt = s.alreadyThere ? 'この時限に登録済み' : s.freeWhite ? `空き ${s.freeWhite}` : s.freeGray ? '臨時枠のみ' : av.past ? '満員（メモ）' : '満員';
+        const free = (s.freeWhite || 0) + (s.freeGray || 0);
+        const cls = s.alreadyThere ? 'ng' : free ? 'ok' : av.past ? 'memo' : 'ng';
+        const txt = s.alreadyThere ? 'この時限に登録済み' : free ? `空き ${free}` : av.past ? '満員（メモ）' : '満員';
         return `<button class="slot ${cls}" data-time="${esc(s.time)}" ${cls === 'ng' ? 'disabled' : ''} aria-pressed="false"><div class="tm">${esc(s.time)}</div><div class="st">${txt}</div></button>`;
       }).join('')}</div>`;
       scrollToSlots();
@@ -633,7 +634,7 @@ async function renderTransfer(r) {
         $slots.querySelectorAll('.slot').forEach(o => o.setAttribute('aria-pressed', 'false'));
         b.setAttribute('aria-pressed', 'true');
         const sl = av.slots.find(x => x.time === b.dataset.time) || {};
-        chosen = { date, time: b.dataset.time, gray: b.classList.contains('gray'), memo: b.classList.contains('memo'), past: !!av.past, free: (sl.freeWhite || 0) + (sl.freeGray || 0) };
+        chosen = { date, time: b.dataset.time, memo: b.classList.contains('memo'), past: !!av.past, free: (sl.freeWhite || 0) + (sl.freeGray || 0) };
         book.disabled = false;
         book.textContent = chosen.past ? 'この日時の振替を記録する' : 'この日時に振り替える';
         // 兄弟がいて、未振替が2件以上あり、残り1枠のときは注意を出す（過去の日の記録では出さない）
@@ -669,7 +670,7 @@ async function renderTransfer(r) {
     const attendId = document.getElementById('attend')?.value || r.studentId;
     const who = S.students.find(s => s.id === attendId);
     const label = fmtJa(chosen.date) + ' ' + chosen.time;
-    let extra = (chosen.gray ? '臨時枠に入ります。' : '')
+    let extra = ''
       + (attendId !== r.studentId ? `${who.name}さんが出席します。` : '');
     if ((!S.admin || S.preview) && !chosen.past && S.students.length > 1 && S.openCount > 1 && chosen.free === 1) extra += '\nこの時間の空きは残り1枠です。お一人分のみのお取り置きとなります。';
     confirmSheet(chosen.past ? '振替を記録します' : 'この日時に振り替えます', `${label}${extra ? '\n' + extra : ''}`, chosen.past ? '記録する' : '振り替える', async () => {
@@ -803,7 +804,7 @@ async function renderDayRoster(iso) {
     const pills = [
       s.absent.length ? `<span class="pill abs">欠席 ${s.absent.length}</span>` : '',
       s.transfer.length ? `<span class="pill tr">振替 ${s.transfer.length}</span>` : '',
-      s.free == null ? '' : `<span class="pill">空き ${s.free}${s.gray ? `＋臨時${s.gray}` : ''}</span>`,
+      s.free == null ? '' : `<span class="pill">空き ${s.free + (s.gray || 0)}</span>`,
     ].join('');
     const rows = [];
     s.absent.forEach(a => rows.push(`<li class="abs"><span class="k">欠席</span>${who(a.id, a.name)}<span class="meta">${a.manual ? '台帳になし（時間割の赤のみ）' : a.status === '振替済' ? `振替済 → ${esc(a.to)}` : '振替待ち'}</span></li>`));
@@ -1683,7 +1684,7 @@ function mockApiBase(action, p) {
       const table = { 2: ['16:00', '17:00'], 3: ['16:30', '17:30'], 4: ['16:30', '17:30'], 5: ['17:30'], 6: ['9:30', '10:30', '11:30', '13:30', '14:30', '15:30', '16:30'], 0: ['9:30', '10:30', '11:30'] };
       const past = d < new Date(new Date().setHours(0, 0, 0, 0));
       // 過去の日は満員の時限が多い想定（欠席者の名前が赤で残っているため）
-      const slots = (table[dow] || []).map((time, i) => ({ time, label: time, freeWhite: past ? (i === 2 ? 1 : 0) : [2, 0, 1, 3, 0, 4, 2][i] || 0, freeGray: !past && i === 1 ? 2 : 0, alreadyThere: dow === 6 && time === '10:30' }));
+      const slots = (table[dow] || []).map((time, i) => ({ time, label: time, freeWhite: past ? (i === 2 ? 1 : 0) : [2, 0, 1, 3, 0, 4, 2][i] || 0, freeGray: 0, alreadyThere: dow === 6 && time === '10:30' }));
       return wait({ code: slots.length ? 'OK' : 'NO_DATE', slots, past });
     }
     case 'absence': {
@@ -1735,7 +1736,7 @@ function mockAdmin(action, p) {
     return wait(action === 'planWithdraw' ? plan : { code: 'OK', plan });
   }
   if (action === 'planMove' || action === 'applyMove') {
-    const plan = { ok: p.toDow !== '日', blockers: p.toDow === '日' ? ['10/18(日) ' + p.toTime + '：白い空き枠がありません（臨時枠のみ）'] : [], warnings: ['時間割（原本）の2週目は確認済みです（モック）'],
+    const plan = { ok: p.toDow !== '日', blockers: p.toDow === '日' ? ['10/18(日) ' + p.toTime + '：満員です（空きセルがありません）'] : [], warnings: ['時間割（原本）の2週目は確認済みです（モック）'],
       from: `${p.fromDow} ${p.fromTime}`, to: `${p.toDow} ${p.toTime}`, effective: fmtJa(p.effective), cellCount: 12, sheets: ['時間割（原本）', '2026年10月', '2026年11月'], newWeeks: ['10/14(水) 16:30', '10/21(水) 16:30'] };
     return wait(action === 'planMove' ? plan : { code: plan.ok ? 'OK' : 'BLOCKED', plan });
   }
@@ -1743,7 +1744,7 @@ function mockAdmin(action, p) {
     const d = new Date(p.date + 'T00:00'), dow = d.getDay();
     const times = { 2: ['16:00', '17:00'], 3: ['16:30', '17:30'], 4: ['16:30', '17:30'], 5: ['17:30'], 6: ['9:30', '10:30', '11:30', '13:30'], 0: ['9:30', '10:30', '11:30'] }[dow] || [];
     const pool = ['青木陸', '石井葵', '上田蓮', '岡本結', '加藤湊', '木村凛', '小林颯', '斎藤芽'];
-    const slots = times.map((time, i) => ({ time, label: time, free: [1, 0, 2, 0][i % 4], gray: i === 1 ? 1 : 0,
+    const slots = times.map((time, i) => ({ time, label: time, free: [1, 1, 2, 0][i % 4], gray: 0,
       present: pool.slice(i % 3, (i % 3) + 5 - (i % 2)),
       absent: i === 0 ? [{ id: 'S011', name: '佐藤花子', status: '振替済', to: '11/21(土) 10:30' }, { name: '森山一樹', status: '', to: '', manual: true }]
         : i === 1 ? [{ id: 'S002', name: '山田次郎', status: '未振替', to: '' }] : [],
